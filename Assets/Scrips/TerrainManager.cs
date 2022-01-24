@@ -4,7 +4,8 @@ using UnityEngine;
 using Newtonsoft.Json; // Import JSON.NET from Unity Asset store (not needed in 2022 version)
 
 
-public class TerrainManager : MonoBehaviour {
+public class TerrainManager : MonoBehaviour
+{
 
 
     //public TestScriptNoObject testNoObject = new TestScriptNoObject();
@@ -54,9 +55,10 @@ public class TerrainManager : MonoBehaviour {
 
 
     // Update is called once per frame
-    void Update () {
-		
-	}
+    void Update()
+    {
+
+    }
 }
 
 
@@ -76,7 +78,7 @@ public class TerrainInfo
     public Vector3 start_pos;
     public Vector3 goal_pos;
 
-    
+
     public void TerrainInfo2()
     {
         file_name = "my_terrain";
@@ -94,11 +96,11 @@ public class TerrainInfo
         Debug.Log("Using hard coded info...");
         //traversability = new float[,] { { 1.1f, 2f }, { 3.3f, 4.4f } };
         traversability = new float[x_N, z_N]; // hardcoded now, needs to change
-        for(int i = 0; i < x_N; i++)
+        for (int i = 0; i < x_N; i++)
         {
             for (int j = 0; j < z_N; j++)
             {
-                if ((i == 0 || i == x_N -1) || (j == 0 || j == z_N - 1))
+                if ((i == 0 || i == x_N - 1) || (j == 0 || j == z_N - 1))
                 {
                     traversability[i, j] = 1.0f;
                 }
@@ -110,13 +112,17 @@ public class TerrainInfo
         }
     }
 
+
+
+    #region Index/Coordinates conversion =========================================================================
     public int get_i_index(float x)
     {
-        int index = (int) Mathf.Floor(x_N * (x - x_low) / (x_high - x_low));
+        int index = (int)Mathf.Floor(x_N * (x - x_low) / (x_high - x_low));
         if (index < 0)
         {
             index = 0;
-        }else if (index > x_N - 1)
+        }
+        else if (index > x_N - 1)
         {
             index = x_N - 1;
         }
@@ -148,6 +154,19 @@ public class TerrainInfo
         float step = (z_high - z_low) / z_N;
         return z_low + step / 2 + step * j;
     }
+
+
+    public Vector3 nodeToCoordinates(Vector2Int node)
+    {
+        return new Vector3(get_x_pos(node.x), 0, get_z_pos(node.y));
+    }
+
+    public Vector2Int coordinatesToNode(Vector3 point)
+    {
+        return new Vector2Int(get_i_index(point.x), get_j_index(point.z));
+    }
+
+    #endregion ================================================================================================================
 
     public void CreateCubes()
     {
@@ -195,6 +214,7 @@ public class TerrainInfo
         string path = Application.dataPath + "/Resources/Text/" + file_name + ".json";
         Debug.Log("AssetPath:" + path);
         System.IO.File.WriteAllText(path, jsonString);
+
 #if UNITY_EDITOR
         UnityEditor.AssetDatabase.Refresh();
 #endif

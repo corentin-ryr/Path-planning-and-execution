@@ -14,8 +14,11 @@ namespace UnityStandardAssets.Vehicles.Car
         public GameObject terrain_manager_game_object;
         TerrainManager terrain_manager;
 
+        List<Vector3> AStarPath = new List<Vector3>();
+
         private void Start()
         {
+
             // get the car controller
             m_Car = GetComponent<CarController>();
             terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
@@ -23,6 +26,20 @@ namespace UnityStandardAssets.Vehicles.Car
             // Plan your path here
             // Replace the code below that makes a random path
             // ...
+
+            Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
+            Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
+            Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
+
+            Debug.Log(pathNodes);
+
+            for (int i = 0; i < pathNodes.Length; i++)
+            {
+                AStarPath.Add(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
+            }
+
+            Debug.Log("Path length " + AStarPath.Count);
+
 
             Vector3 start_pos = terrain_manager.myInfo.start_pos;
             Vector3 goal_pos = terrain_manager.myInfo.goal_pos;
@@ -48,7 +65,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 old_wp = wp;
             }
 
-            
+
         }
 
 
@@ -77,8 +94,18 @@ namespace UnityStandardAssets.Vehicles.Car
 
 
             // this is how you control the car
-            m_Car.Move(1f, 1f, 1f, 0f);
+            //m_Car.Move(1f, 1f, 1f, 0f);
 
         }
+
+
+        void OnDrawGizmos() {
+            foreach (Vector3 point in AStarPath)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawSphere(point, 2f);
+            }
+        }
+
     }
 }
