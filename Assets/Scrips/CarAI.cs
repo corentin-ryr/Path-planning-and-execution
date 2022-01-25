@@ -14,7 +14,8 @@ namespace UnityStandardAssets.Vehicles.Car
         public GameObject terrain_manager_game_object;
         TerrainManager terrain_manager;
 
-        List<Vector3> AStarPath = new List<Vector3>();
+        Trajectory trajectory = new Trajectory();
+
 
         private void Start()
         {
@@ -27,6 +28,9 @@ namespace UnityStandardAssets.Vehicles.Car
             // Replace the code below that makes a random path
             // ...
 
+
+            #region Create the path ===============================================================================
+
             Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
             Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
             Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
@@ -35,11 +39,10 @@ namespace UnityStandardAssets.Vehicles.Car
 
             for (int i = 0; i < pathNodes.Length; i++)
             {
-                AStarPath.Add(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
+                trajectory.addPointToTrajectory(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
             }
 
-            Debug.Log("Path length " + AStarPath.Count);
-
+            #endregion
 
             Vector3 start_pos = terrain_manager.myInfo.start_pos;
             Vector3 goal_pos = terrain_manager.myInfo.goal_pos;
@@ -54,6 +57,9 @@ namespace UnityStandardAssets.Vehicles.Car
                 my_path.Add(waypoint);
             }
             my_path.Add(goal_pos);
+
+
+
 
 
             // Plot your path to see if it makes sense
@@ -99,13 +105,14 @@ namespace UnityStandardAssets.Vehicles.Car
         }
 
 
-        void OnDrawGizmos() {
-            foreach (Vector3 point in AStarPath)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawSphere(point, 2f);
-            }
-        }
+        // void OnDrawGizmos()
+        // {
+        //     foreach (Vector3 point in AStarPath)
+        //     {
+        //         Gizmos.color = Color.red;
+        //         Gizmos.DrawSphere(point, 2f);
+        //     }
+        // }
 
     }
 }
