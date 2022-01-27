@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Trajectory
 {
-    private List<Vector3> waypoints;
+    public List<Vector3> waypoints = new List<Vector3>();
 
     public void setTrajectoryAsSuccessiveWaypoints(Vector3[] waypoints)
     {

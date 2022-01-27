@@ -105,14 +105,18 @@ namespace UnityStandardAssets.Vehicles.Car
         }
 
 
-        // void OnDrawGizmos()
-        // {
-        //     foreach (Vector3 point in AStarPath)
-        //     {
-        //         Gizmos.color = Color.red;
-        //         Gizmos.DrawSphere(point, 2f);
-        //     }
-        // }
+        void OnDrawGizmos()
+        {
+            if (Application.isPlaying)
+            {
+                foreach (Vector3 point in trajectory.waypoints)
+                {
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawSphere(point, 2f);
+                }
+            }
+
+        }
 
     }
 }
