@@ -9,12 +9,23 @@ namespace UnityStandardAssets.Vehicles.Car
     [RequireComponent(typeof(CarController))]
     public class CarAI : MonoBehaviour
     {
+
+        [Header("Parameters")]
+        public float k = 1f;
+        public float ks = 0f;
+        public bool debug = true;
+
+        [Header("References")]
+        public Trajectory trajectory;
+
         private CarController m_Car; // the car controller we want to use
 
         public GameObject terrain_manager_game_object;
         TerrainManager terrain_manager;
 
-        Trajectory trajectory = new Trajectory();
+
+        private float currentThrottle = 0.1f;
+        private float currentSteering = 0f;
 
 
         private void Start()
@@ -31,45 +42,35 @@ namespace UnityStandardAssets.Vehicles.Car
 
             #region Create the path ===============================================================================
 
-            Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
-            Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
-            Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
-
-            Debug.Log(pathNodes);
-
-            for (int i = 0; i < pathNodes.Length; i++)
+            if (!debug)
             {
-                trajectory.addPointToTrajectory(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
+                Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
+                Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
+                Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
+
+                Debug.Log(pathNodes);
+
+                trajectory.addPointToTrajectory(terrain_manager.myInfo.start_pos);
+                for (int i = 1; i < pathNodes.Length - 1; i++)
+                {
+                    trajectory.addPointToTrajectory(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
+                }
+                trajectory.addPointToTrajectory(terrain_manager.myInfo.goal_pos);
+            }
+            else
+            {
+                //Fake Trajectory for debug
+                trajectory.addPointToTrajectory(new Vector3(100, 0, 100));
+                trajectory.addPointToTrajectory(new Vector3(100, 0, 130));
+                trajectory.addPointToTrajectory(new Vector3(100, 0, 160));
+                trajectory.addPointToTrajectory(new Vector3(100, 0, 190));
+                trajectory.addPointToTrajectory(new Vector3(100, 0, 220));
+                trajectory.addPointToTrajectory(new Vector3(100, 0, 250));
             }
 
+
+            trajectory.optimizeTrajectory();
             #endregion
-
-            Vector3 start_pos = terrain_manager.myInfo.start_pos;
-            Vector3 goal_pos = terrain_manager.myInfo.goal_pos;
-
-            List<Vector3> my_path = new List<Vector3>();
-
-            my_path.Add(start_pos);
-
-            for (int i = 0; i < 3; i++)
-            {
-                Vector3 waypoint = start_pos + new Vector3(UnityEngine.Random.Range(-50.0f, 50.0f), 0, UnityEngine.Random.Range(-30.0f, 30.0f));
-                my_path.Add(waypoint);
-            }
-            my_path.Add(goal_pos);
-
-
-
-
-
-            // Plot your path to see if it makes sense
-            // Note that path can only be seen in "Scene" window, not "Game" window
-            Vector3 old_wp = start_pos;
-            foreach (var wp in my_path)
-            {
-                Debug.DrawLine(old_wp, wp, Color.red, 100f);
-                old_wp = wp;
-            }
 
 
         }
@@ -77,46 +78,77 @@ namespace UnityStandardAssets.Vehicles.Car
 
         private void FixedUpdate()
         {
-            // Execute your path here
-            // ...
 
-            // this is how you access information about the terrain from the map
-            int i = terrain_manager.myInfo.get_i_index(transform.position.x);
-            int j = terrain_manager.myInfo.get_j_index(transform.position.z);
-            float grid_center_x = terrain_manager.myInfo.get_x_pos(i);
-            float grid_center_z = terrain_manager.myInfo.get_z_pos(j);
 
-            Debug.DrawLine(transform.position, new Vector3(grid_center_x, 0f, grid_center_z));
-
-            // this is how you access information about the terrain from a simulated laser range finder
+            // // this is how you access information about the terrain from a simulated laser range finder
             RaycastHit hit;
             float maxRange = 50f;
             if (Physics.Raycast(transform.position + transform.up, transform.TransformDirection(Vector3.forward), out hit, maxRange))
             {
                 Vector3 closestObstacleInFront = transform.TransformDirection(Vector3.forward) * hit.distance;
                 Debug.DrawRay(transform.position, closestObstacleInFront, Color.yellow);
-                Debug.Log("Did Hit");
+                // Debug.Log("Did Hit");
             }
 
+            computeSteering();
+            computeThrottle(20f);
 
             // this is how you control the car
-            //m_Car.Move(1f, 1f, 1f, 0f);
+            m_Car.Move(currentSteering, currentThrottle, 0f, 0f);
+
+            // Debug.Log(Input.GetAxis("Horizontal"));
 
         }
 
+        private void computeThrottle(float targetSpeed)
+        {
 
+            float speed = m_Car.CurrentSpeed;
+
+            if (targetSpeed > speed)
+            {
+                currentThrottle = 0.5f;
+            }
+            else
+            {
+                currentThrottle = 0f;
+            }
+
+            Debug.Log("Speed: " + speed);
+        }
+
+        private void computeSteering()
+        {
+            Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
+
+            Vector3 trajectoryTangent = trajectory.getTangent(currentPosition);
+
+            float psi = Vector3.Angle(transform.forward, trajectoryTangent);
+            psi = Vector3.Cross(transform.forward, trajectoryTangent).y < 0 ? -psi : psi;
+
+            Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
+            float distanceToClosestPoint = Vector3.Distance(currentPosition, closestpoint);
+            float crossTrack = Mathf.Atan((k * distanceToClosestPoint) / (m_Car.CurrentSpeed + ks)) * 360 / Mathf.PI;
+            crossTrack = Vector3.Cross(transform.forward, closestpoint - currentPosition).y < 0 ? -crossTrack : crossTrack;
+
+            currentSteering = Mathf.Clamp(psi + crossTrack, -25, 25) / 25;
+
+            Debug.Log(psi);
+            Debug.Log(crossTrack);
+        }
+
+
+
+
+        #region Gizmos ========================================================================================
         void OnDrawGizmos()
         {
             if (Application.isPlaying)
             {
-                foreach (Vector3 point in trajectory.waypoints)
-                {
-                    Gizmos.color = Color.red;
-                    Gizmos.DrawSphere(point, 2f);
-                }
+                // trajectory.OnDrawGizmos();
             }
-
         }
 
+        #endregion
     }
 }
