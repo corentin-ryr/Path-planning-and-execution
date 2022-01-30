@@ -48,8 +48,6 @@ namespace UnityStandardAssets.Vehicles.Car
                 Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
                 Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
 
-                Debug.Log(pathNodes);
-
                 trajectory.addPointToTrajectory(terrain_manager.myInfo.start_pos);
                 for (int i = 1; i < pathNodes.Length - 1; i++)
                 {
@@ -69,7 +67,9 @@ namespace UnityStandardAssets.Vehicles.Car
             }
 
 
-            trajectory.optimizeTrajectory();
+            trajectory.OptimizeTrajectory();
+            
+            Debug.Log("Travel time: " + trajectory.GetTravelTime());
             #endregion
 
 
@@ -96,7 +96,6 @@ namespace UnityStandardAssets.Vehicles.Car
             // this is how you control the car
             m_Car.Move(currentSteering, currentThrottle, 0f, 0f);
 
-            // Debug.Log(Input.GetAxis("Horizontal"));
 
         }
 
@@ -132,9 +131,6 @@ namespace UnityStandardAssets.Vehicles.Car
             crossTrack = Vector3.Cross(transform.forward, closestpoint - currentPosition).y < 0 ? -crossTrack : crossTrack;
 
             currentSteering = Mathf.Clamp(psi + crossTrack, -25, 25) / 25;
-
-            Debug.Log(psi);
-            Debug.Log(crossTrack);
         }
 
 

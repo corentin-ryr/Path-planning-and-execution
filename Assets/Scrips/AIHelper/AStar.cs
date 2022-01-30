@@ -7,10 +7,6 @@ public static class AStar
 
     public static Vector2Int[] ComputeShortestPath(float[,] traversability, Vector2Int startNode, Vector2Int goalNode)
     {
-
-        Debug.Log(startNode);
-        Debug.Log(goalNode);
-
         PriorityQueue<Vector2Int> discoveredNodes = new PriorityQueue<Vector2Int>();
         discoveredNodes.Insert(startNode, 0);
 

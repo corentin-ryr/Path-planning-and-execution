@@ -583,7 +583,20 @@ namespace PathCreation
             }
         }
 
+        public float TravelTime() {
+            float travelTime = 0;
+            for (int i = 0; i < NumSegments; i++)
+            {
+                Debug.Log("Numsegments: " + NumSegments);
+                Vector3[] controlPoints = GetPointsInSegment(i);
+                travelTime += CubicBezierUtility.EstimateCurveTravelTime(controlPoints);
+            }
+
+            return travelTime;
+        }
+
         #endregion
+
 
         #region Internal methods and accessors
 

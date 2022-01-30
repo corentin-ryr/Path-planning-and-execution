@@ -14,7 +14,6 @@ public class Trajectory : MonoBehaviour
     void Start()
     {
         pathCreator = GetComponent<PathCreator>();
-        // pathCreator.bezierPath = null;
     }
 
     public void setTrajectoryAsSuccessiveWaypoints(Vector3[] waypoints)
@@ -28,6 +27,9 @@ public class Trajectory : MonoBehaviour
         optimized = false;
         waypoints.Add(point);
     }
+
+    #region Getters and accesseurs
+        
 
     public Vector3 getTangent(Vector3 position)
     {
@@ -84,14 +86,23 @@ public class Trajectory : MonoBehaviour
         return closestPoint;
     }
 
+    public float GetTravelTime() {
+        return pathCreator.bezierPath.TravelTime();
+    }
+
+    #endregion
 
     #region Trajectory optimization ==========================================================================
 
-    public void optimizeTrajectory()
+    public void OptimizeTrajectory()
     {
         optimized = true;
         //Transform the series of waypoints in a smooth series of bezier
         fromWaypointsToBezier();
+
+        pathCreator.bezierPath.ControlPointMode = BezierPath.ControlMode.Aligned;
+
+
     }
 
     private void fromWaypointsToBezier()
@@ -114,7 +125,6 @@ public class Trajectory : MonoBehaviour
 
     public void OnDrawGizmos()
     {
-        Debug.Log(waypoints.Count);
         if (Application.isPlaying)
         {
             Vector3 old_wp = waypoints[0];

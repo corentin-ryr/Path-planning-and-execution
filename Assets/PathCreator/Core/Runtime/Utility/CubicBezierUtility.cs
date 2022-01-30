@@ -91,6 +91,33 @@ namespace PathCreation.Utility {
             return estimatedCurveLength;
         }
 
+        public static float EstimateCurveTravelTime(Vector3[] controlPoints) {
+            return EstimateCurveTravelTime(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3]);
+        }
+
+        public static float EstimateCurveTravelTime(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3) {
+            //TODO (check if it is accurate + improve on it)
+
+            int n = 20; //Number of sample points
+
+            float travelTime = 0f;
+            for (int i = 0; i < n - 1; i++)
+            {
+                Vector3 firstPoint = EvaluateCurve(p0, p1, p2, p3, (float)i / n);
+                Vector3 secondPoint = EvaluateCurve(p0, p1, p2, p3, (float)(i + 1) / (float)n);
+                float curvature = EvaluateCurveSecondDerivative(p0, p1, p2, p3, i / (float)n).magnitude;
+                float speed = SpeedAtCurvature(curvature);
+
+                travelTime += (firstPoint - secondPoint).magnitude / speed;
+
+                Debug.Log((firstPoint - secondPoint).magnitude);
+                // Debug.Log(secondPoint);
+            }
+
+            Debug.Log("Bezier travel time: " + travelTime);
+            return travelTime;
+        }
+
         /// Times of stationary points on curve (points where derivative is zero on any axis)
         public static List<float> ExtremePointTimes (Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3) {
             // coefficients of derivative function
@@ -130,6 +157,11 @@ namespace PathCreation.Utility {
                 }
             }
             return times;
+        }
+
+        private static float SpeedAtCurvature(float curvature) {
+            return 20f;
+            return 1 / curvature; //TODO find the relation for speed/curvature
         }
 
     }
