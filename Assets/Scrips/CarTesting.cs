@@ -21,12 +21,13 @@ public class CarTesting : MonoBehaviour
     [Header("Testing parameters")]
     public Scenario scenario;
     public float targetSpeed = 20f;
+    public float steering = 0;
     public float gainDerivative = 1f;
     public float gainIntegral = 1f;
     public float gainProportional = 1f;
 
 
-    private List<(float, float, bool)> keyFrames = new List<(float, float, bool)>(); //First is time and second is speed, third is "isSkidding"
+    private List<(float, float, int)> keyFrames = new List<(float, float, int)>(); //First is time and second is speed, third is "isSkidding"
     private CarController m_Car; // the car controller we want to use
     PidController controller = new PidController(1f, 1f, 0.1f, 1f, -1f);
 
@@ -49,21 +50,27 @@ public class CarTesting : MonoBehaviour
         {
             case Scenario.accelerationProfile:
                 m_Car.Move(0f, 1f, 0f, 0f);
-                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding));
+                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0));
                 break;
 
             case Scenario.speedStability:
                 m_Car.Move(0f, computeThrottle(targetSpeed), 0f, 0f);
-                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding));
+                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0));
                 break;
 
             case Scenario.maxTurnProfile:
-                Debug.Log("TODO");
+                // steering = Mathf.Clamp(((int)(Time.time - 10) / 5) * 0.1f, 0, 1);
+                targetSpeed = 70 + (Time.time - 3) * 0.2f;
+
+                m_Car.Move(steering, legacyComputeThrottle(targetSpeed), 0f, 0f);
+                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0));
+
+                print(m_Car.Skidding);
                 break;
-            
+
             case Scenario.responseTime:
                 m_Car.Move(0f, computeThrottle(targetSpeed), computeThrottle(targetSpeed), 0f);
-                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding));
+                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0));
 
                 if (Time.time > 15)
                 {
@@ -75,7 +82,6 @@ public class CarTesting : MonoBehaviour
             default:
                 break;
         }
-
 
 
         if (Input.GetKey("s"))
@@ -99,7 +105,8 @@ public class CarTesting : MonoBehaviour
         return currentThrottle;
     }
 
-    private float legacyComputeThrottle(float targetSpeed) {
+    private float legacyComputeThrottle(float targetSpeed)
+    {
         float currentThrottle;
         float speed = m_Car.CurrentSpeed;
 

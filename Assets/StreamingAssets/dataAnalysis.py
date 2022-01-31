@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 fileName = "export.csv"
 
 scenario = ""
+targetSpeed = ""
 with open(fileName) as f:
-    scenario = f.readline().split()[0]
+    scenario, targetSpeed = f.readline().split()
+    targetSpeed = float(targetSpeed)
 
 data = np.genfromtxt(fileName, delimiter=",", skip_header=2)
 data = data[data[:, 0] > 2] #Delete the first 2 seconds since we wait for the car to drop on the floor
@@ -32,7 +34,7 @@ if scenario == "speedStability":
     plt.show()
 
 if scenario == "responseTime":
-    targetSpeed = ""
+    
     with open(fileName) as f:
         targetSpeed = float(f.readline().split()[1])
         
@@ -43,3 +45,16 @@ if scenario == "responseTime":
     plt.plot(data[:, 0], data[:, 1])
     plt.show()
     
+if scenario == "maxTurnProfile":
+    # skidding = data[data[:,2] >= 0.1, 0] # When did the car start skidding
+    # skidding = skidding[skidding > 10][0]
+    
+    skiddingIndices = np.argwhere(data[:, 2] >= 0.1) 
+    skiddingIndices = skiddingIndices[data[skiddingIndices, 0] > 10]
+    
+    print(skiddingIndices)
+    print("Skidding speed is: " + str(data[skiddingIndices[0], 1]))
+    plt.title("Speed as a function of time")
+    plt.plot(data[:, 0], data[:, 1])
+    plt.vlines(skiddingIndices[0], 0, targetSpeed, "r")
+    plt.show()

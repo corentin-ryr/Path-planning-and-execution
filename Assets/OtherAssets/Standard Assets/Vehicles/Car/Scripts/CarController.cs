@@ -280,6 +280,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 // is the tire slipping above the given threshhold
                 if (Mathf.Abs(wheelHit.forwardSlip) >= m_SlipLimit || Mathf.Abs(wheelHit.sidewaysSlip) >= m_SlipLimit)
                 {
+                    Skidding = true;
                     m_WheelEffects[i].EmitTyreSmoke();
 
                     // avoiding all four tires screeching at the same time
@@ -295,6 +296,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 if (m_WheelEffects[i].PlayingAudio)
                 {
                     m_WheelEffects[i].StopAudio();
+                    Skidding = false;
                 }
                 // end the trail generation
                 m_WheelEffects[i].EndSkidTrail();
