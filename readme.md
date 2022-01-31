@@ -10,5 +10,4 @@ A car is guided through a maze by a path-finding algorithm and further post-proc
 
 <a id="3">[3]</a> Hoffmann, Gabriel M., Claire J. Tomlin, Michael Montemerlo, and Sebastian Thrun. "Autonomous Automobile Trajectory Tracking for Off-Road Driving: Controller Design, Experimental Validation and Racing." American Control Conference. 2007, pp. 2296–2301. doi:10.1109/ACC.2007.4282788 (Stanley Controller)
 
-<a id="4">[4]</a> Xiao-Diao Chen, Yin Zhou, Zhenyu Shu, Hua Su, Jean-Claude Paul. Improved Algebraic Algorithm
-On Point Projection For Bézier Curves.
+<a id="4">[4]</a> Xiao-Diao Chen, Yin Zhou, Zhenyu Shu, Hua Su, Jean-Claude Paul. Improved Algebraic Algorithm On Point Projection For Bézier Curves. (Not used yet)

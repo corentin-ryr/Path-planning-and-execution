@@ -6,13 +6,30 @@ using System.Text;
 using System.IO;
 using UnityStandardAssets.Vehicles.Car;
 
+public enum Scenario
+{
+    accelerationProfile,
+    speedStability,
+    maxTurnProfile,
+    responseTime
+}
+
 [RequireComponent(typeof(CarController))]
 public class CarTesting : MonoBehaviour
 {
 
-    private List<(float, float, bool)> keyFrames = new List<(float, float, bool)>(); //First is time and second is speed, third is "isSkidding"
+    [Header("Testing parameters")]
+    public Scenario scenario;
+    public float targetSpeed = 20f;
+    public float gainDerivative = 1f;
+    public float gainIntegral = 1f;
+    public float gainProportional = 1f;
 
+
+    private List<(float, float, bool)> keyFrames = new List<(float, float, bool)>(); //First is time and second is speed, third is "isSkidding"
     private CarController m_Car; // the car controller we want to use
+    PidController controller = new PidController(1f, 1f, 0.1f, 1f, -1f);
+
 
     // Start is called before the first frame update
     void Start()
@@ -28,8 +45,38 @@ public class CarTesting : MonoBehaviour
             return;
         }
 
-        m_Car.Move(0f, 1f, 0f, 0f);
-        keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding));
+        switch (scenario)
+        {
+            case Scenario.accelerationProfile:
+                m_Car.Move(0f, 1f, 0f, 0f);
+                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding));
+                break;
+
+            case Scenario.speedStability:
+                m_Car.Move(0f, computeThrottle(targetSpeed), 0f, 0f);
+                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding));
+                break;
+
+            case Scenario.maxTurnProfile:
+                Debug.Log("TODO");
+                break;
+            
+            case Scenario.responseTime:
+                m_Car.Move(0f, computeThrottle(targetSpeed), computeThrottle(targetSpeed), 0f);
+                keyFrames.Add((Time.time, m_Car.CurrentSpeed, m_Car.Skidding));
+
+                if (Time.time > 15)
+                {
+                    targetSpeed = 100;
+                }
+                break;
+
+
+            default:
+                break;
+        }
+
+
 
         if (Input.GetKey("s"))
         {
@@ -37,10 +84,41 @@ public class CarTesting : MonoBehaviour
         }
     }
 
+    private float computeThrottle(float targetSpeed)
+    {
+        controller.GainDerivative = gainDerivative;
+        controller.GainIntegral = gainIntegral;
+        controller.GainProportional = gainProportional;
 
+
+        controller.SetPoint = targetSpeed;
+        controller.ProcessVariable = m_Car.CurrentSpeed;
+        float currentThrottle = (float)controller.ControlVariable(System.TimeSpan.FromSeconds(Time.fixedDeltaTime));
+
+        Debug.Log("Throttle: " + currentThrottle);
+        return currentThrottle;
+    }
+
+    private float legacyComputeThrottle(float targetSpeed) {
+        float currentThrottle;
+        float speed = m_Car.CurrentSpeed;
+
+        if (targetSpeed > speed)
+        {
+            currentThrottle = 1f;
+        }
+        else
+        {
+            currentThrottle = 0f;
+        }
+        return currentThrottle;
+    }
+
+    #region Save file =======================================================================================
     private string ToCSV()
     {
-        var sb = new StringBuilder("Time,Value");
+        var sb = new StringBuilder(scenario.ToString() + " " + targetSpeed.ToString());
+        sb.Append('\n').Append("Time,Value,Skidding");
         foreach (var frame in keyFrames)
         {
             sb.Append('\n').Append(frame.Item1.ToString()).Append(',').Append(frame.Item2.ToString()).Append(',').Append(frame.Item3.ToString());
@@ -80,4 +158,6 @@ public class CarTesting : MonoBehaviour
         AssetDatabase.Refresh();
 #endif
     }
+
+    #endregion
 }
