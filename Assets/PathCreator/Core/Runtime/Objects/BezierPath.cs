@@ -3,7 +3,7 @@ using System.Linq;
 using PathCreation.Utility;
 using UnityEngine;
 using UnityEditor;
-
+using System;
 
 namespace PathCreation
 {
@@ -583,17 +583,44 @@ namespace PathCreation
             }
         }
 
-        public float TravelTime() {
+        public float TravelTime(Func<float, float> SpeedAtCurvature)
+        {
+
             float travelTime = 0;
             for (int i = 0; i < NumSegments; i++)
             {
                 Debug.Log("Numsegments: " + NumSegments);
                 Vector3[] controlPoints = GetPointsInSegment(i);
-                travelTime += CubicBezierUtility.EstimateCurveTravelTime(controlPoints);
+                travelTime += EstimateCurveTravelTime(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], SpeedAtCurvature);
             }
 
             return travelTime;
         }
+
+
+        public float EstimateCurveTravelTime(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Func<float, float> SpeedAtCurvature)
+        {
+            //TODO (check if it is accurate + improve on it)
+
+            int n = 20; //Number of sample points
+
+            float travelTime = 0f;
+            for (int i = 0; i < n - 1; i++)
+            {
+                Vector3 firstPoint = CubicBezierUtility.EvaluateCurve(p0, p1, p2, p3, (float)i / n);
+                Vector3 secondPoint = CubicBezierUtility.EvaluateCurve(p0, p1, p2, p3, (float)(i + 1) / (float)n);
+                float curvature = CubicBezierUtility.EvaluateCurveSecondDerivative(p0, p1, p2, p3, i / (float)n).magnitude;
+                float speed = SpeedAtCurvature(curvature);
+
+                travelTime += (firstPoint - secondPoint).magnitude / speed;
+
+                // Debug.Log((firstPoint - secondPoint).magnitude);
+            }
+
+            // Debug.Log("Bezier travel time: " + travelTime);
+            return travelTime;
+        }
+
 
         #endregion
 

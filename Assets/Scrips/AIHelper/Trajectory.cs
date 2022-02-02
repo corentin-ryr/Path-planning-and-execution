@@ -2,18 +2,62 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using PathCreation;
+using Logging;
 
 [RequireComponent(typeof(PathCreator))]
 public class Trajectory : MonoBehaviour
 {
+    public bool debug = false; //True is the function optimize has been called since the last modification of the waypoints.
+
+
     private bool optimized = false; //True is the function optimize has been called since the last modification of the waypoints.
     private List<Vector3> waypoints = new List<Vector3>();
 
+    TerrainManager terrain_manager;
+
     private PathCreator pathCreator;
+
 
     void Start()
     {
         pathCreator = GetComponent<PathCreator>();
+
+        findShortestPath();
+
+        OptimizeTrajectory();
+
+        Debug.Log("Travel time: " + GetTravelTime());
+    }
+
+
+    private void findShortestPath()
+    {
+        terrain_manager = GameObject.FindObjectOfType<TerrainManager>();
+
+
+        if (!debug)
+        {
+            Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
+            Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
+            Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
+
+            addPointToTrajectory(terrain_manager.myInfo.start_pos);
+            for (int i = 1; i < pathNodes.Length - 1; i++)
+            {
+                addPointToTrajectory(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
+            }
+            addPointToTrajectory(terrain_manager.myInfo.goal_pos);
+        }
+        else
+        {
+            //Fake Trajectory for debug
+            addPointToTrajectory(new Vector3(100, 0, 100));
+            addPointToTrajectory(new Vector3(100, 0, 130));
+            addPointToTrajectory(new Vector3(100, 0, 160));
+            addPointToTrajectory(new Vector3(100, 0, 190));
+            addPointToTrajectory(new Vector3(100, 0, 220));
+            addPointToTrajectory(new Vector3(100, 0, 250));
+        }
     }
 
     public void setTrajectoryAsSuccessiveWaypoints(Vector3[] waypoints)
@@ -29,7 +73,7 @@ public class Trajectory : MonoBehaviour
     }
 
     #region Getters and accesseurs
-        
+
 
     public Vector3 getTangent(Vector3 position)
     {
@@ -86,8 +130,9 @@ public class Trajectory : MonoBehaviour
         return closestPoint;
     }
 
-    public float GetTravelTime() {
-        return pathCreator.bezierPath.TravelTime();
+    public float GetTravelTime()
+    {
+        return pathCreator.bezierPath.TravelTime(SpeedAtCurvature);
     }
 
     #endregion
@@ -120,8 +165,22 @@ public class Trajectory : MonoBehaviour
         pathCreator.bezierPath = bezierPath;
     }
 
+    private float[] sampleCurvatures = new float[] { 32.8f, 21.8f, 16.28f, 12.95f, 10.71f, 9.10f, 7.89f, 6.93f, 6.15f };
+    public float SpeedAtCurvature(float curvature)
+    {
+        //Equation between the curvature (in meter) and the speed (in m/s). Found experimentally.
+        return 21.4f + 2.08f * curvature - 0.0133f * curvature * curvature;
+    }
+
 
     #endregion
+
+    #region Logging and gizmos
+
+    public void LogCurvatureHistogram() {
+        DataLogger dataLogger = new DataLogger();
+        //TODO
+    }
 
     public void OnDrawGizmos()
     {
@@ -141,4 +200,5 @@ public class Trajectory : MonoBehaviour
         }
 
     }
+    #endregion
 }

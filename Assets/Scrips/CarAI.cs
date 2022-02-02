@@ -21,7 +21,6 @@ namespace UnityStandardAssets.Vehicles.Car
         private CarController m_Car; // the car controller we want to use
 
         public GameObject terrain_manager_game_object;
-        TerrainManager terrain_manager;
 
 
         private float currentThrottle = 0.1f;
@@ -33,46 +32,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // get the car controller
             m_Car = GetComponent<CarController>();
-            terrain_manager = terrain_manager_game_object.GetComponent<TerrainManager>();
-
-            // Plan your path here
-            // Replace the code below that makes a random path
-            // ...
-
-
-            #region Create the path ===============================================================================
-
-            if (!debug)
-            {
-                Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
-                Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
-                Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
-
-                trajectory.addPointToTrajectory(terrain_manager.myInfo.start_pos);
-                for (int i = 1; i < pathNodes.Length - 1; i++)
-                {
-                    trajectory.addPointToTrajectory(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
-                }
-                trajectory.addPointToTrajectory(terrain_manager.myInfo.goal_pos);
-            }
-            else
-            {
-                //Fake Trajectory for debug
-                trajectory.addPointToTrajectory(new Vector3(100, 0, 100));
-                trajectory.addPointToTrajectory(new Vector3(100, 0, 130));
-                trajectory.addPointToTrajectory(new Vector3(100, 0, 160));
-                trajectory.addPointToTrajectory(new Vector3(100, 0, 190));
-                trajectory.addPointToTrajectory(new Vector3(100, 0, 220));
-                trajectory.addPointToTrajectory(new Vector3(100, 0, 250));
-            }
-
-
-            trajectory.OptimizeTrajectory();
             
-            Debug.Log("Travel time: " + trajectory.GetTravelTime());
-            #endregion
-
-
         }
 
 
