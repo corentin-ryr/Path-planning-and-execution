@@ -42,10 +42,10 @@ public class GenerateDubinsPath : MonoBehaviour
             GeneratePathCoordinates();
             return pathDataList;
         }
+        // No paths found
+        return null;
     }
 
-    // No paths found
-    return null;
 
     void PositionLeftRightCirtcles()
     {
@@ -189,7 +189,7 @@ public class GenerateDubinsPath : MonoBehaviour
         Vector3 goalTangent = Vector3.zero;
         Vector3 middleCircle = Vector3.zero;
 
-        DubinsMath.getCCCTangents(startRightCircle, goalRightCircle, false, out startTangent, out goalTangent out middleCircle);
+        DubinsMath.getCCCTangents(startRightCircle, goalRightCircle, false, out startTangent, out goalTangent, out middleCircle);
 
         // Calculate lengths
         float length1 = DubinsMath.ArcLength(startRightCircle, startPos, startTangent, false);
@@ -209,7 +209,7 @@ public class GenerateDubinsPath : MonoBehaviour
         Vector3 goalTangent = Vector3.zero;
         Vector3 middleCircle = Vector3.zero;
 
-        DubinsMath.getCCCTangents(startleftCircle, goalLeftCircle, false, out startTangent, out goalTangent out middleCircle);
+        DubinsMath.getCCCTangents(startleftCircle, goalLeftCircle, false, out startTangent, out goalTangent, out middleCircle);
 
         // Calculate lengths
         float length1 = DubinsMath.ArcLength(startLeftCircle, startPos, startTangent, true);

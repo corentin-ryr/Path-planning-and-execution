@@ -1,4 +1,5 @@
-// Based on impementation by Erik Nordeus
+
+ // Based on impementation by Erik Nordeus
 // Source: https://www.habrador.com/tutorials/unity-dubins-paths/3-dubins-paths-in-unity/
 
 using System.Collections;
@@ -32,16 +33,16 @@ public static class NewBehaviourScript : MonoBehaviour
     // LSL or RSR
     public static void outerTangent(
         Vector3 startCircle,
-        Vector3 goalCircle,
+        Vector3 goalCirtcle,
         bool isBottom,
         out Vector3 startTangent,
-        out Vector3 goalTagent)
+        out Vector3 goalTangent)
     {
         float theta = 90f * Mathf.Deg2Rad;  // Angle to the first tagent
 
         theta += Mathf.Atan2(goalCircle.z - startCircle.z, goalCircle.x, startCircle.x);
 
-        if isBottom {
+        if (isBottom) {
             theta += Mathf.PI;  // Add 180 degress to put tagent at bottom
         }
 
@@ -143,10 +144,10 @@ public static class NewBehaviourScript : MonoBehaviour
 
         float theta = Mathf.Atan2(V2.z, V2.x) - Mathf.Atan2(V1.z, V1.x);
 
-        if theta < 0f && isLeftCircle)
+        if (theta < 0f && isLeftCircle)
         {
             theta += 2f * Mathf.PI;
-        } else if
+        } else if (theta > 0 && !isLeftCircle)
         {
             theta -= 2f * Mathf.PI;
         }
