@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PathCreation;
 using Logging;
+using Analysis;
 
 [RequireComponent(typeof(PathCreator))]
 public class Trajectory : MonoBehaviour
@@ -12,6 +13,8 @@ public class Trajectory : MonoBehaviour
 
     private bool optimized = false; //True is the function optimize has been called since the last modification of the waypoints.
     private List<Vector3> waypoints = new List<Vector3>();
+
+    private List<float[]> speedAtDistance;
 
     TerrainManager terrain_manager;
 
@@ -137,9 +140,28 @@ public class Trajectory : MonoBehaviour
     public float ComputeTravelTime()
     {
         List<float[]> radiusData;
-        float travelTime = 0f;
-        radiusData = pathCreator.bezierPath.CurvatureProfile();
+        radiusData = pathCreator.bezierPath.RadiusProfile();
+
+        List<float[]> maxSpeedData = new List<float[]>();
+        for (int i = 0; i < radiusData.Count; i++)
+        {
+            maxSpeedData.Add(new float[] { radiusData[i][0], SpeedAtRadius(radiusData[i][1]) });
+        }
+        maxSpeedData[0] = new float[] { radiusData[0][0], 0f };
+        List<float> constraintData = MathHelper.BestFunctionWithSlopeConstraints(maxSpeedData, AccelerationAtSpeed);
+
+        for (int i = 0; i < radiusData.Count; i++)
+        {
+            radiusData[i] = new float[] { radiusData[i][0], radiusData[i][1], maxSpeedData[i][1], constraintData[i] };
+        }
         LogRadiusHistogram(radiusData);
+        speedAtDistance = radiusData;
+
+        float travelTime = 0f;
+        for (int i = 0; i < constraintData.Count - 1; i++)
+        {
+            travelTime += (radiusData[i + 1][0] - radiusData[i][0]) / (constraintData[i] + 0.01f);
+        }
         return travelTime;
     }
 
@@ -183,17 +205,37 @@ public class Trajectory : MonoBehaviour
     }
 
     private float[] sampleCurvatures = new float[] { 32.8f, 21.8f, 16.28f, 12.95f, 10.71f, 9.10f, 7.89f, 6.93f, 6.15f };
-    public float SpeedAtCurvature(float curvature)
+    public float SpeedAtRadius(float radius)
     {
-        float radius = Mathf.Clamp(1 / curvature, 6f, 33f); //Range of values in which the speed-curvature function is valid
+        radius = Mathf.Clamp(radius, 6f, 33f); //Range of values in which the speed-curvature function is valid
 
         //Equation between the curvature (in meter) and the speed (in m/s). Found experimentally.
         return 21.4f + 2.08f * radius - 0.0133f * radius * radius;
     }
 
-    public float AccelerationAtSpeed(float speed) {
+    public float AccelerationAtSpeed(float speed)
+    {
         //TODO
-        return 1f;
+        float accel = 0f;
+
+        if (speed > 12 && speed < 110)
+        {
+            accel = 15.2f - 0.104f * speed;
+        }
+        else if (speed < 12)
+        {
+            accel = 0.493f + 2.25f * speed - 0.0835f * speed * speed;
+        }
+        return accel;
+    }
+
+    public float SpeedAtPosition(Vector3 position)
+    {
+        float distanceFromStart = pathCreator.path.GetClosestDistanceAlongPath(position);
+
+        //TODO do a dichotomy here to find the closest point in the array
+
+        return 0f;
     }
 
 
@@ -203,10 +245,8 @@ public class Trajectory : MonoBehaviour
 
     public void LogRadiusHistogram(List<float[]> radiusData)
     {
-        Debug.Log(radiusData[0][0]);
-        Debug.Log(radiusData[0][1]);
         DataLogger dataLogger = new DataLogger(radiusData);
-        dataLogger.SaveToFile("Time, Radius");
+        dataLogger.SaveToFile("Time, Radius, MaxSpeed, ActualSpeed");
     }
 
     public void OnDrawGizmos()

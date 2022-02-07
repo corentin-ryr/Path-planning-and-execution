@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-fileName = "export.csv"
+fileName = "accelerationProfile.csv"
 
 scenario = ""
 targetSpeed = ""
@@ -14,6 +14,7 @@ data = data[data[:, 0] > 2] #Delete the first 2 seconds since we wait for the ca
 data[:,0] = data[:,0] - 2
 # print(np.var(data[1:,0] - data[:-1, 0])) # Check if the samples are equally separated in time
 
+print(scenario)
 if scenario == "accelerationProfile":
     plt.title("Speed as a function of time")
     plt.plot(data[:, 0], data[:, 1])

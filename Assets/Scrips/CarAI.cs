@@ -67,7 +67,7 @@ namespace UnityStandardAssets.Vehicles.Car
             Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
             float curvature = trajectory.GetCurvature(closestpoint);
 
-            float targetSpeed = trajectory.SpeedAtCurvature(curvature);
+            float targetSpeed = trajectory.SpeedAtRadius(1 / curvature);
             Debug.Log("Curvature: " + curvature);
 
             float speed = m_Car.CurrentSpeed;
