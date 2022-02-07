@@ -22,15 +22,15 @@ namespace Logging
         }
 
 
-        private string ToCSV(string header, List<float[]> keyFrames)
+        private string ToCSV(string header)
         {
             var sb = new StringBuilder(header);
-            sb.Append('\n').Append("Time,Value,Skidding");
             foreach (var frame in keyFrames)
             {
+                sb.Append('\n');
                 for (int i = 0; i < frame.Length; i++)
                 {
-                    sb.Append('\n').Append(frame[i].ToString()).Append(',');
+                    sb.Append(frame[i].ToString()).Append(',');
                 }
             }
 
@@ -38,10 +38,10 @@ namespace Logging
         }
 
 
-        public void SaveToFile(string header, List<float[]> keyFrames)
+        public void SaveToFile(string header)
         {
             // Use the CSV generation from before
-            var content = ToCSV(header, keyFrames);
+            var content = ToCSV(header);
 
             // The target file path e.g.
 #if UNITY_EDITOR

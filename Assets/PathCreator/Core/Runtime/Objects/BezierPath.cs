@@ -583,43 +583,50 @@ namespace PathCreation
             }
         }
 
-        public float TravelTime(Func<float, float> SpeedAtCurvature)
+        public List<float[]> CurvatureProfile(Func<float, float> SpeedAtCurvature, Func<float, float> AccelerationAtSpeed)
         {
-
+            List<float[]> radiusList = new List<float[]> { new float[] { 0f, 0f } };
             float travelTime = 0;
             for (int i = 0; i < NumSegments; i++)
             {
-                Debug.Log("Numsegments: " + NumSegments);
+                List<float[]> radiusCurve;
+                float curveTravelTime = 0;
                 Vector3[] controlPoints = GetPointsInSegment(i);
-                travelTime += EstimateCurveTravelTime(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], SpeedAtCurvature);
+
+                radiusCurve = EstimateCurveProfile(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], 0f, radiusList[radiusList.Count - 1][0]);
+
+                travelTime += curveTravelTime;
+                radiusList.AddRange(radiusCurve);
             }
 
-            return travelTime;
+            return radiusList;
         }
 
 
-        public float EstimateCurveTravelTime(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Func<float, float> SpeedAtCurvature)
+        public List<float[]> EstimateCurveProfile(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float speedAtFirst, float distanceAtFirst = 0f)
         {
             //TODO (check if it is accurate + improve on it)
 
             int n = 20; //Number of sample points
 
-            float travelTime = 0f;
+            List<float[]> radiusList = new List<float[]>();
+            float travelDistance = distanceAtFirst;
             for (int i = 0; i < n - 1; i++)
             {
                 Vector3 firstPoint = CubicBezierUtility.EvaluateCurve(p0, p1, p2, p3, (float)i / n);
                 Vector3 secondPoint = CubicBezierUtility.EvaluateCurve(p0, p1, p2, p3, (float)(i + 1) / (float)n);
                 float curvature = CubicBezierUtility.EvaluateCurveSecondDerivative(p0, p1, p2, p3, i / (float)n).magnitude;
-                float speed = SpeedAtCurvature(curvature);
 
-                travelTime += (firstPoint - secondPoint).magnitude / speed;
-
-                // Debug.Log((firstPoint - secondPoint).magnitude);
+                travelDistance += (firstPoint - secondPoint).magnitude;
+                radiusList.Add(new float[] { travelDistance, 1 / curvature });
             }
 
             // Debug.Log("Bezier travel time: " + travelTime);
-            return travelTime;
+            return radiusList;
         }
+
+
+
 
 
         #endregion

@@ -32,7 +32,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // get the car controller
             m_Car = GetComponent<CarController>();
-            
+
         }
 
 
@@ -51,7 +51,7 @@ namespace UnityStandardAssets.Vehicles.Car
             }
 
             computeSteering();
-            computeThrottle(20f);
+            computeThrottle();
 
             // this is how you control the car
             m_Car.Move(currentSteering, currentThrottle, 0f, 0f);
@@ -59,8 +59,16 @@ namespace UnityStandardAssets.Vehicles.Car
 
         }
 
-        private void computeThrottle(float targetSpeed)
+        private void computeThrottle()
         {
+
+            //Get the curvature at the closest point
+            Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
+            Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
+            float curvature = trajectory.GetCurvature(closestpoint);
+
+            float targetSpeed = trajectory.SpeedAtCurvature(curvature);
+            Debug.Log("Curvature: " + curvature);
 
             float speed = m_Car.CurrentSpeed;
 
@@ -73,7 +81,7 @@ namespace UnityStandardAssets.Vehicles.Car
                 currentThrottle = 0f;
             }
 
-            Debug.Log("Speed: " + speed);
+            // Debug.Log("Speed: " + speed);
         }
 
         private void computeSteering()

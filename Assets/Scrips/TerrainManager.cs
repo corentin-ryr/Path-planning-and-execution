@@ -182,7 +182,6 @@ public class TerrainInfo
                     cube.transform.position = new Vector3(get_x_pos(i), 0.0f, get_z_pos(j));
                     cube.transform.localScale = new Vector3(x_step, 15.0f, z_step);
                 }
-
             }
         }
     }

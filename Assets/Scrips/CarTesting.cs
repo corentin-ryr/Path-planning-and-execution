@@ -86,7 +86,7 @@ public class CarTesting : MonoBehaviour
         if (Input.GetKey("s"))
         {
             DataLogger dataLogger = new DataLogger(keyFrames);
-            dataLogger.SaveToFile(scenario.ToString() + " " + targetSpeed.ToString(), keyFrames);
+            dataLogger.SaveToFile(scenario.ToString() + " " + targetSpeed.ToString() + "\nTime,Value,Skidding");
         }
     }
 

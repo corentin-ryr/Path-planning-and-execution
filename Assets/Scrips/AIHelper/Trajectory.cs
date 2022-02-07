@@ -22,6 +22,8 @@ public class Trajectory : MonoBehaviour
     {
         pathCreator = GetComponent<PathCreator>();
 
+
+
         findShortestPath();
 
         OptimizeTrajectory();
@@ -72,7 +74,7 @@ public class Trajectory : MonoBehaviour
         waypoints.Add(point);
     }
 
-    #region Getters and accesseurs
+    #region Getters and accesseurs =====================================================================================================
 
 
     public Vector3 getTangent(Vector3 position)
@@ -132,8 +134,21 @@ public class Trajectory : MonoBehaviour
 
     public float GetTravelTime()
     {
-        return pathCreator.bezierPath.TravelTime(SpeedAtCurvature);
+        List<float[]> radiusData;
+        float travelTime = 0f;
+        radiusData = pathCreator.bezierPath.CurvatureProfile(SpeedAtCurvature, AccelerationAtSpeed);
+        LogRadiusHistogram(radiusData);
+        return travelTime;
     }
+
+    public float GetCurvature(Vector3 position)
+    {
+        float time = pathCreator.path.GetClosestTimeOnPath(position);
+        float curvature = pathCreator.path.GetCurvature(time, EndOfPathInstruction.Stop);
+
+        return curvature;
+    }
+
 
     #endregion
 
@@ -168,8 +183,15 @@ public class Trajectory : MonoBehaviour
     private float[] sampleCurvatures = new float[] { 32.8f, 21.8f, 16.28f, 12.95f, 10.71f, 9.10f, 7.89f, 6.93f, 6.15f };
     public float SpeedAtCurvature(float curvature)
     {
+        float radius = Mathf.Clamp(1 / curvature, 6f, 33f); //Range of values in which the speed-curvature function is valid
+
         //Equation between the curvature (in meter) and the speed (in m/s). Found experimentally.
-        return 21.4f + 2.08f * curvature - 0.0133f * curvature * curvature;
+        return 21.4f + 2.08f * radius - 0.0133f * radius * radius;
+    }
+
+    public float AccelerationAtSpeed(float speed) {
+        //TODO
+        return 1f;
     }
 
 
@@ -177,9 +199,12 @@ public class Trajectory : MonoBehaviour
 
     #region Logging and gizmos
 
-    public void LogCurvatureHistogram() {
-        DataLogger dataLogger = new DataLogger();
-        //TODO
+    public void LogRadiusHistogram(List<float[]> radiusData)
+    {
+        Debug.Log(radiusData[0][0]);
+        Debug.Log(radiusData[0][1]);
+        DataLogger dataLogger = new DataLogger(radiusData);
+        dataLogger.SaveToFile("Time, Radius");
     }
 
     public void OnDrawGizmos()
