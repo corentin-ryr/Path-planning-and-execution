@@ -28,7 +28,7 @@ public class Trajectory : MonoBehaviour
 
         OptimizeTrajectory();
 
-        Debug.Log("Travel time: " + GetTravelTime());
+        Debug.Log("Travel time: " + ComputeTravelTime());
     }
 
 
@@ -132,11 +132,13 @@ public class Trajectory : MonoBehaviour
         return closestPoint;
     }
 
-    public float GetTravelTime()
+    //From the curvature profile (curvature as a function of the distance from the start) 
+    //and with the car properties we can compute an estimation of the travel time of the curve (necessary for later optimization)
+    public float ComputeTravelTime()
     {
         List<float[]> radiusData;
         float travelTime = 0f;
-        radiusData = pathCreator.bezierPath.CurvatureProfile(SpeedAtCurvature, AccelerationAtSpeed);
+        radiusData = pathCreator.bezierPath.CurvatureProfile();
         LogRadiusHistogram(radiusData);
         return travelTime;
     }

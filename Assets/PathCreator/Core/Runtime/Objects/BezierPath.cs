@@ -583,7 +583,7 @@ namespace PathCreation
             }
         }
 
-        public List<float[]> CurvatureProfile(Func<float, float> SpeedAtCurvature, Func<float, float> AccelerationAtSpeed)
+        public List<float[]> CurvatureProfile()
         {
             List<float[]> radiusList = new List<float[]> { new float[] { 0f, 0f } };
             float travelTime = 0;
