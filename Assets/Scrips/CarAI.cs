@@ -13,6 +13,9 @@ namespace UnityStandardAssets.Vehicles.Car
         [Header("Parameters")]
         public float k = 1f;
         public float ks = 0f;
+        public float gainDerivative = 1f;
+        public float gainIntegral = 1f;
+        public float gainProportional = 1f;
         public bool debug = true;
 
         [Header("References")]
@@ -21,6 +24,8 @@ namespace UnityStandardAssets.Vehicles.Car
         private CarController m_Car; // the car controller we want to use
 
         public GameObject terrain_manager_game_object;
+        PidController controller = new PidController(1f, 1f, 0.1f, 1f, -1f);
+
 
 
         private float currentThrottle = 0.1f;
@@ -54,34 +59,60 @@ namespace UnityStandardAssets.Vehicles.Car
             computeThrottle();
 
             // this is how you control the car
-            m_Car.Move(currentSteering, currentThrottle, 0f, 0f);
+            m_Car.Move(currentSteering, currentThrottle, currentThrottle, 0f);
 
 
         }
 
+        // Legacy
+        // private void computeThrottle()
+        // {
+
+        //     //Get the curvature at the closest point
+        //     Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
+        //     Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
+        //     // float curvature = trajectory.GetCurvature(closestpoint);
+
+        //     float targetSpeed = trajectory.SpeedAtPosition(currentPosition) / 2.23693629f;
+        //     targetSpeed = Mathf.Max(targetSpeed, 5f);
+        //     float speed = m_Car.CurrentSpeed;
+
+        //     if (targetSpeed > speed)
+        //     {
+        //         currentThrottle = 0.5f;
+        //     }
+        //     else
+        //     {
+        //         currentThrottle = 0f;
+        //     }
+
+        //     Debug.Log("Target speed: " + targetSpeed);
+        //     Debug.Log("Speed: " + speed);
+        // }
+
         private void computeThrottle()
         {
-
-            //Get the curvature at the closest point
             Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
             Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
-            float curvature = trajectory.GetCurvature(closestpoint);
 
-            float targetSpeed = trajectory.SpeedAtRadius(1 / curvature);
-            Debug.Log("Curvature: " + curvature);
+            float targetSpeed = trajectory.SpeedAtPosition(currentPosition);//* 2.23693629f;
+            targetSpeed = Mathf.Max(targetSpeed, 5f);
 
-            float speed = m_Car.CurrentSpeed;
+            controller.GainDerivative = gainDerivative;
+            controller.GainIntegral = gainIntegral;
+            controller.GainProportional = gainProportional;
 
-            if (targetSpeed > speed)
-            {
-                currentThrottle = 0.5f;
-            }
-            else
-            {
-                currentThrottle = 0f;
-            }
 
-            // Debug.Log("Speed: " + speed);
+            controller.SetPoint = targetSpeed;
+
+            float currentSpeed = m_Car.CurrentSpeed;
+            currentSpeed = m_Car.Backing ? -currentSpeed : currentSpeed;
+            controller.ProcessVariable = currentSpeed;
+            currentThrottle = (float)controller.ControlVariable(System.TimeSpan.FromSeconds(Time.fixedDeltaTime));
+
+            Debug.Log("Target speed: " + targetSpeed);
+            Debug.Log("Speed: " + currentSpeed);
+
         }
 
         private void computeSteering()

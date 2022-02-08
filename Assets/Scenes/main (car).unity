@@ -8470,7 +8470,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   k: 1
-  ks: 1
+  ks: 1.5
   debug: 0
   trajectory: {fileID: 860141329}
   terrain_manager_game_object: {fileID: 1358011048}

@@ -85,7 +85,6 @@ namespace Analysis
 
             foreach (int valleyIndex in valleys)
             {
-                Debug.Log("Valley index: " + valleyIndex);
                 //We compute the partial best function
                 float[] tempB = new float[xyFunction.Count];
                 tempB[valleyIndex] = xyFunction[valleyIndex][1];
@@ -127,6 +126,29 @@ namespace Analysis
 
             }
             return new List<float>(b);
+        }
+
+        public static int DichotomicSearch(float[] inputArray, float key)
+        {
+            int min = 0;
+            int max = inputArray.Length - 1;
+            while (max - min > 1)
+            {
+                int mid = (min + max) / 2;
+                if (key == inputArray[mid])
+                {
+                    return mid;
+                }
+                else if (key < inputArray[mid])
+                {
+                    max = mid;
+                }
+                else
+                {
+                    min = mid;
+                }
+            }
+            return min;
         }
     }
 }

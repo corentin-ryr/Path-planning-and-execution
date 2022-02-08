@@ -10,7 +10,8 @@ public enum Scenario
     accelerationProfile,
     speedStability,
     maxTurnProfile,
-    responseTime
+    responseTime,
+    brakeTime
 }
 
 [RequireComponent(typeof(CarController))]
@@ -49,12 +50,12 @@ public class CarTesting : MonoBehaviour
         {
             case Scenario.accelerationProfile:
                 m_Car.Move(0f, 1f, 0f, 0f);
-                keyFrames.Add(new float[] {Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0});
+                keyFrames.Add(new float[] { Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0 });
                 break;
 
             case Scenario.speedStability:
                 m_Car.Move(0f, computeThrottle(targetSpeed), 0f, 0f);
-                keyFrames.Add(new float[] {Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0});
+                keyFrames.Add(new float[] { Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0 });
                 break;
 
             case Scenario.maxTurnProfile:
@@ -62,19 +63,31 @@ public class CarTesting : MonoBehaviour
                 targetSpeed = 70 + (Time.time - 3) * 0.2f;
 
                 m_Car.Move(steering, legacyComputeThrottle(targetSpeed), 0f, 0f);
-                keyFrames.Add(new float[] {Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0});
+                keyFrames.Add(new float[] { Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0 });
 
                 print(m_Car.Skidding);
                 break;
 
             case Scenario.responseTime:
                 m_Car.Move(0f, computeThrottle(targetSpeed), computeThrottle(targetSpeed), 0f);
-                keyFrames.Add(new float[] {Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0});
+                keyFrames.Add(new float[] { Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0 });
 
                 if (Time.time > 15)
                 {
                     targetSpeed = 100;
                 }
+                break;
+
+            case Scenario.brakeTime:
+                if (Time.time < 10)
+                {
+                    m_Car.Move(0f, computeThrottle(targetSpeed), computeThrottle(targetSpeed), 0f);
+                }
+                else
+                {
+                    m_Car.Move(0f, computeThrottle(0), computeThrottle(0), 0f);
+                }
+                keyFrames.Add(new float[] { Time.time, m_Car.CurrentSpeed, m_Car.Skidding ? 1 : 0 });
                 break;
 
 
@@ -98,10 +111,14 @@ public class CarTesting : MonoBehaviour
 
 
         controller.SetPoint = targetSpeed;
-        controller.ProcessVariable = m_Car.CurrentSpeed;
+
+        float currentSpeed = m_Car.CurrentSpeed;
+        currentSpeed = m_Car.Backing ? -currentSpeed : currentSpeed;
+        controller.ProcessVariable = currentSpeed;
         float currentThrottle = (float)controller.ControlVariable(System.TimeSpan.FromSeconds(Time.fixedDeltaTime));
 
-        Debug.Log("Throttle: " + currentThrottle);
+        Debug.Log("Target speed: " + targetSpeed);
+        Debug.Log("Speed: " + currentSpeed);
         return currentThrottle;
     }
 
@@ -121,5 +138,5 @@ public class CarTesting : MonoBehaviour
         return currentThrottle;
     }
 
-    
+
 }

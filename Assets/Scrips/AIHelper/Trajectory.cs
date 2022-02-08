@@ -184,8 +184,6 @@ public class Trajectory : MonoBehaviour
         //Transform the series of waypoints in a smooth series of bezier
         fromWaypointsToBezier();
 
-        pathCreator.bezierPath.ControlPointMode = BezierPath.ControlMode.Aligned;
-
 
     }
 
@@ -201,6 +199,9 @@ public class Trajectory : MonoBehaviour
         controlPoints.Add(waypoints[waypoints.Count - 1]);
 
         BezierPath bezierPath = new BezierPath(controlPoints, false, PathSpace.xz);
+        bezierPath.ControlPointMode = BezierPath.ControlMode.Aligned;
+        bezierPath.MovePoint(1, terrain_manager.myInfo.start_pos + new Vector3(0, 0, 5));
+
         pathCreator.bezierPath = bezierPath;
     }
 
@@ -210,21 +211,20 @@ public class Trajectory : MonoBehaviour
         radius = Mathf.Clamp(radius, 6f, 33f); //Range of values in which the speed-curvature function is valid
 
         //Equation between the curvature (in meter) and the speed (in m/s). Found experimentally.
-        return 21.4f + 2.08f * radius - 0.0133f * radius * radius;
+        return 9.56f + 0.931f * radius - 5.94E-3f * radius * radius;
     }
 
     public float AccelerationAtSpeed(float speed)
     {
-        //TODO
         float accel = 0f;
 
-        if (speed > 12 && speed < 110)
+        if (speed > 5 && speed < 49)
         {
-            accel = 15.2f - 0.104f * speed;
+            accel = 6.78f - 0.104f * speed;
         }
-        else if (speed < 12)
+        else if (speed <= 5)
         {
-            accel = 0.493f + 2.25f * speed - 0.0835f * speed * speed;
+            accel = 0.22f + 2.25f * speed - 0.187f * speed * speed;
         }
         return accel;
     }
@@ -232,10 +232,18 @@ public class Trajectory : MonoBehaviour
     public float SpeedAtPosition(Vector3 position)
     {
         float distanceFromStart = pathCreator.path.GetClosestDistanceAlongPath(position);
+        Debug.Log("Distance: " + distanceFromStart);
 
-        //TODO do a dichotomy here to find the closest point in the array
+        //TODO check if it works: it doesn't (to make it work try to make the target change by step instead of using the profile directly)
+        float[] distances = new float[speedAtDistance.Count];
+        for (int i = 0; i < speedAtDistance.Count; i++)
+        {
+            distances[i] = speedAtDistance[i][0];
+        }
+        int index = MathHelper.DichotomicSearch(distances, distanceFromStart);
+        Debug.Log("Index: " + index);
 
-        return 0f;
+        return speedAtDistance[index][3];
     }
 
 
