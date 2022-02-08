@@ -148,7 +148,7 @@ public class Trajectory : MonoBehaviour
             maxSpeedData.Add(new float[] { radiusData[i][0], SpeedAtRadius(radiusData[i][1]) });
         }
         maxSpeedData[0] = new float[] { radiusData[0][0], 0f };
-        List<float> constraintData = MathHelper.BestFunctionWithSlopeConstraints(maxSpeedData, AccelerationAtSpeed);
+        List<float> constraintData = MathHelper.BestFunctionWithSlopeConstraints(maxSpeedData, AccelerationAtSpeed, DeccelerationAtSpeed);
 
         for (int i = 0; i < radiusData.Count; i++)
         {
@@ -227,6 +227,11 @@ public class Trajectory : MonoBehaviour
             accel = 0.22f + 2.25f * speed - 0.187f * speed * speed;
         }
         return accel;
+    }
+
+    public float DeccelerationAtSpeed(float speed) {
+        // return 3.12f + 5.92f * speed;
+        return 3.12f;
     }
 
     public float SpeedAtPosition(Vector3 position)

@@ -65,7 +65,7 @@ namespace Analysis
         /// <param name="a">The constraint function (the returned function cannot go above a). In this case it is the max speed at each point.</param>
         /// <param name="AccelerationAtSpeed">Slope constraint</param>
         /// <returns></returns>
-        public static List<float> BestFunctionWithSlopeConstraints(List<float[]> xyFunction, Func<float, float> AccelerationAtSpeed)
+        public static List<float> BestFunctionWithSlopeConstraints(List<float[]> xyFunction, Func<float, float> AccelerationAtSpeed, Func<float, float> DeccelerationAtSpeed)
         {
             //TODO Check if it works
 
@@ -95,9 +95,9 @@ namespace Analysis
                 int i = valleyIndex;
                 while (canContinue && i > 0)
                 {
-                    if (xyFunction[i - 1][1] >= xyFunction[i][1] || tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * AccelerationAtSpeed(tempB[i]) <= xyFunction[i - 1][1])
+                    if (xyFunction[i - 1][1] >= xyFunction[i][1] || tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * DeccelerationAtSpeed(tempB[i]) <= xyFunction[i - 1][1])
                     {
-                        tempB[i - 1] = Mathf.Min(tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * AccelerationAtSpeed(tempB[i]), xyFunction[i - 1][1]);
+                        tempB[i - 1] = Mathf.Min(tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * DeccelerationAtSpeed(tempB[i]), xyFunction[i - 1][1]);
                         b[i - 1] = Mathf.Min(tempB[i - 1], b[i - 1]);
                         i = i - 1;
                     }
@@ -149,6 +149,11 @@ namespace Analysis
                 }
             }
             return min;
+        }
+
+        public static List<float> pieceWiseConstantFromSpeedProfile(List<float> speedProfile) {
+            //TODO
+            return new List<float>();
         }
     }
 }
