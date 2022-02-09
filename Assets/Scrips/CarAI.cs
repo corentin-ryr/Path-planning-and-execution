@@ -10,26 +10,31 @@ namespace UnityStandardAssets.Vehicles.Car
     public class CarAI : MonoBehaviour
     {
 
-        [Header("Parameters")]
-        public float k = 1f;
-        public float ks = 0f;
+        [Header("PID controller parameters")]
         public float gainDerivative = 1f;
         public float gainIntegral = 1f;
         public float gainProportional = 1f;
+
+        [Header("Stanley controller parameters")]
+        public float k = 1f;
+        public float ks = 0f;
+
+        [Header("Tracking score parameters")]
+        public float distanceRelaxation = 1f;
         public bool debug = true;
 
         [Header("References")]
         public Trajectory trajectory;
 
+
+        //Internal references
         private CarController m_Car; // the car controller we want to use
+        private PidController controller = new PidController(1f, 1f, 0.1f, 1f, -1f);
 
-        public GameObject terrain_manager_game_object;
-        PidController controller = new PidController(1f, 1f, 0.1f, 1f, -1f);
-
-
-
+        //Internal variables
         private float currentThrottle = 0.1f;
         private float currentSteering = 0f;
+        private float trackTrajectoryScore = float.MaxValue; //Lower is better
 
 
         private void Start()
@@ -60,8 +65,6 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // this is how you control the car
             m_Car.Move(currentSteering, currentThrottle, currentThrottle, 0f);
-
-
         }
 
         // Legacy
@@ -95,8 +98,10 @@ namespace UnityStandardAssets.Vehicles.Car
             Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
             Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
 
-            float targetSpeed = trajectory.SpeedAtPosition(currentPosition);//* 2.23693629f;
-            targetSpeed = Mathf.Max(targetSpeed, 5f);
+            float targetSpeed = trajectory.SpeedAtPosition2(currentPosition); //* 2.23693629f;
+
+            // targetSpeed = Mathf.Max(targetSpeed, 5f); //The minimum target speed is 5 because otherwise it doesn't start (TODO to be removed after the improved target speed profile ?)
+            targetSpeed = trackTrajectoryScore > 0.3 ? 5f : targetSpeed; //We limit the speed of the car if it goes to far away from the trajectory
 
             controller.GainDerivative = gainDerivative;
             controller.GainIntegral = gainIntegral;
@@ -105,13 +110,14 @@ namespace UnityStandardAssets.Vehicles.Car
 
             controller.SetPoint = targetSpeed;
 
-            float currentSpeed = m_Car.CurrentSpeed;
+            float currentSpeed = m_Car.CurrentSpeed / 2.23693629f;
             currentSpeed = m_Car.Backing ? -currentSpeed : currentSpeed;
             controller.ProcessVariable = currentSpeed;
             currentThrottle = (float)controller.ControlVariable(System.TimeSpan.FromSeconds(Time.fixedDeltaTime));
 
             Debug.Log("Target speed: " + targetSpeed);
             Debug.Log("Speed: " + currentSpeed);
+            Debug.Log("Throttle: " + currentThrottle);
 
         }
 
@@ -119,31 +125,23 @@ namespace UnityStandardAssets.Vehicles.Car
         {
             Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
 
-            Vector3 trajectoryTangent = trajectory.getTangent(currentPosition);
+            Vector3 trajectoryTangent = trajectory.getTangentAhead(currentPosition, m_Car.CurrentSpeed / 2.23693629f );
 
             float psi = Vector3.Angle(transform.forward, trajectoryTangent);
             psi = Vector3.Cross(transform.forward, trajectoryTangent).y < 0 ? -psi : psi;
 
             Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
-            float distanceToClosestPoint = Vector3.Distance(currentPosition, closestpoint);
-            float crossTrack = Mathf.Atan((k * distanceToClosestPoint) / (m_Car.CurrentSpeed + ks)) * 360 / Mathf.PI;
+            float carDistanceToTrajectory = Vector3.Distance(currentPosition, closestpoint);
+            float crossTrack = Mathf.Atan((k * carDistanceToTrajectory) / (m_Car.CurrentSpeed / 2.23693629f + ks)) * 360 / Mathf.PI;
             crossTrack = Vector3.Cross(transform.forward, closestpoint - currentPosition).y < 0 ? -crossTrack : crossTrack;
 
             currentSteering = Mathf.Clamp(psi + crossTrack, -25, 25) / 25;
+
+            trackTrajectoryScore = ((1 - Mathf.Exp(-carDistanceToTrajectory / distanceRelaxation)) + Mathf.Abs(psi / 180)) / 2;
         }
 
 
 
 
-        #region Gizmos ========================================================================================
-        void OnDrawGizmos()
-        {
-            if (Application.isPlaying)
-            {
-                // trajectory.OnDrawGizmos();
-            }
-        }
-
-        #endregion
     }
 }

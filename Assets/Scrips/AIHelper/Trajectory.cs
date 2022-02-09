@@ -15,6 +15,7 @@ public class Trajectory : MonoBehaviour
     private List<Vector3> waypoints = new List<Vector3>();
 
     private List<float[]> speedAtDistance;
+    private List<float[]> targetSpeedAtDistance;
 
     TerrainManager terrain_manager;
 
@@ -80,7 +81,7 @@ public class Trajectory : MonoBehaviour
     #region Getters and accesseurs =====================================================================================================
 
 
-    public Vector3 getTangent(Vector3 position)
+    public Vector3 getTangentAhead(Vector3 position, float speed)
     {
         Vector3 tangentAtClosestPoint = Vector3.zero;
 
@@ -103,6 +104,7 @@ public class Trajectory : MonoBehaviour
         else
         {
             float time = pathCreator.path.GetClosestTimeOnPath(position);
+            time = time + speed * 0.001f; //The faster we go, the further away we look for the tangent
             tangentAtClosestPoint = pathCreator.path.GetDirection(time);
         }
 
@@ -154,13 +156,19 @@ public class Trajectory : MonoBehaviour
         {
             radiusData[i] = new float[] { radiusData[i][0], radiusData[i][1], maxSpeedData[i][1], constraintData[i] };
         }
-        LogRadiusHistogram(radiusData);
+
+        targetSpeedAtDistance = MathHelper.pieceWiseConstantFromSpeedProfile(radiusData);
+        LogRadiusHistogram(radiusData, "speedData");
+        LogRadiusHistogram(targetSpeedAtDistance, "targetSpeedData");
         speedAtDistance = radiusData;
 
         float travelTime = 0f;
         for (int i = 0; i < constraintData.Count - 1; i++)
         {
-            travelTime += (radiusData[i + 1][0] - radiusData[i][0]) / (constraintData[i] + 0.01f);
+            if (constraintData[i] > 2f) //To prevent the start of the car to artificially increase the travel time (speed of zero => infinite time)
+            {
+                travelTime += (radiusData[i + 1][0] - radiusData[i][0]) / (constraintData[i]); //The distance between consecutive steps / the speed at the step
+            }
         }
         return travelTime;
     }
@@ -229,9 +237,10 @@ public class Trajectory : MonoBehaviour
         return accel;
     }
 
-    public float DeccelerationAtSpeed(float speed) {
+    public float DeccelerationAtSpeed(float speed)
+    {
         // return 3.12f + 5.92f * speed;
-        return 3.12f;
+        return 2f;
     }
 
     public float SpeedAtPosition(Vector3 position)
@@ -251,15 +260,29 @@ public class Trajectory : MonoBehaviour
         return speedAtDistance[index][3];
     }
 
+    public float SpeedAtPosition2(Vector3 position)
+    {
+        float distanceFromStart = pathCreator.path.GetClosestDistanceAlongPath(position);
+
+        for (int i = 1; i < targetSpeedAtDistance.Count; i++)
+        {
+            if (targetSpeedAtDistance[i][0] > distanceFromStart)
+            {
+                return targetSpeedAtDistance[i][1];
+            }
+        }
+        return -1f;
+    }
+
 
     #endregion
 
     #region Logging and gizmos
 
-    public void LogRadiusHistogram(List<float[]> radiusData)
+    public void LogRadiusHistogram(List<float[]> radiusData, string filename = "export")
     {
         DataLogger dataLogger = new DataLogger(radiusData);
-        dataLogger.SaveToFile("Time, Radius, MaxSpeed, ActualSpeed");
+        dataLogger.SaveToFile("Time, Radius, MaxSpeed, ActualSpeed", filename);
     }
 
     public void OnDrawGizmos()

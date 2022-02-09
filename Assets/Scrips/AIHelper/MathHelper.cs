@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 namespace Analysis
 {
@@ -18,8 +19,10 @@ namespace Analysis
         /// </summary>
         /// <param name="a">List of float that represent the function</param>
         /// <returns></returns>
-        public static List<int> GetValleys(List<float> a)
+        public static List<int> GetValleys(List<float> a, bool maximums = false)
         {
+            float reverse = maximums ? -1f : 1f;
+
             var res = new List<int>();
             if (a.Count < 2)
             {
@@ -29,7 +32,7 @@ namespace Analysis
             CurveState s = CurveState.NotGoingDown;
             for (var i = 1; i != a.Count; i++)
             {
-                switch (Mathf.Sign(a[i] - a[i - 1]))
+                switch (Mathf.Sign(reverse * a[i] - reverse * a[i - 1]))
                 {
                     case -1:
                         s = CurveState.GoingDown;
@@ -67,8 +70,6 @@ namespace Analysis
         /// <returns></returns>
         public static List<float> BestFunctionWithSlopeConstraints(List<float[]> xyFunction, Func<float, float> AccelerationAtSpeed, Func<float, float> DeccelerationAtSpeed)
         {
-            //TODO Check if it works
-
             List<float> a = new List<float>();
             for (int i = 0; i < xyFunction.Count; i++)
             {
@@ -151,9 +152,36 @@ namespace Analysis
             return min;
         }
 
-        public static List<float> pieceWiseConstantFromSpeedProfile(List<float> speedProfile) {
+        public static List<float[]> pieceWiseConstantFromSpeedProfile(List<float[]> xyFunction)
+        {
             //TODO
-            return new List<float>();
+
+            List<float> speedProfile = new List<float>();
+            for (int i = 0; i < xyFunction.Count; i++)
+            {
+                speedProfile.Add(xyFunction[i][1]);
+            }
+            //Get the local minimas
+            List<int> minimaIndices = GetValleys(speedProfile, false);
+
+            //Get the local maximas
+            List<int> maximaIndices = GetValleys(speedProfile, true);
+            maximaIndices.Add(xyFunction.Count - 1);
+
+            //For each extremum, store its distance to the start and the target speed BEFORE it (in the segment between the previous extrema and this one)
+            //That way we can find the target speed by going through the list and finding the first element with a distance bigger than the current distance.
+            List<float[]> targetSpeedAtDistance = new List<float[]>();
+            foreach (int index in minimaIndices)
+            {
+                targetSpeedAtDistance.Add(new float[] { xyFunction[index][0], xyFunction[index][3] });
+            }
+            foreach (int index in maximaIndices)
+            {
+                targetSpeedAtDistance.Add(new float[] { xyFunction[index][0], xyFunction[index][3] });
+            }
+
+            List<float[]> SortedList = targetSpeedAtDistance.OrderBy(o=>o[0]).ToList();
+            return SortedList;
         }
     }
 }

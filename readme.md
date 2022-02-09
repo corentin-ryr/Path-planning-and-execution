@@ -2,7 +2,15 @@
 
 A car is guided through a maze by a path-finding algorithm and further post-processing to enhance the car trajectory. We control the car with a Pure Pursuit algorithm.
 
-# References
+
+## Path travel time estimation
+
+We measured the properties of the car (aceleration max speed in curves).
+From the path curvature and length, we computed the theoretical speed (first the max speed at the path curvature and then we took into account the acceleration).
+
+On terrain C (the simplest one) and A the estimation was half of the real time. This is due to the wrong estimation of the beginning of the vehicule (we can expect the error to be a fixed error, the error percentage is big here because of the short path) and probably due to the speed being in miles per hours.
+
+## References
 
 <a id="1">[1]</a> P. E. Hart, N. J. Nilsson and B. Raphael, "A Formal Basis for the Heuristic Determination of Minimum Cost Paths," in IEEE Transactions on Systems Science and Cybernetics, vol. 4, no. 2, pp. 100-107, July 1968, doi: 10.1109/TSSC.1968.300136.
 

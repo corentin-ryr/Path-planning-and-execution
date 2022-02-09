@@ -38,7 +38,7 @@ namespace Logging
         }
 
 
-        public void SaveToFile(string header)
+        public void SaveToFile(string header, string filename = "export")
         {
             // Use the CSV generation from before
             var content = ToCSV(header);
@@ -52,7 +52,7 @@ namespace Logging
     var folder = Application.persistentDataPath;
 #endif
 
-            var filePath = Path.Combine(folder, "export.csv");
+            var filePath = Path.Combine(folder, filename + ".csv");
 
             using (var writer = new StreamWriter(filePath, false))
             {
