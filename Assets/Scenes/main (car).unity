@@ -535,7 +535,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02125d181a5354fe6b661b4831900cfd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  target_object: {fileID: 0}
+  target_object: {fileID: 1768771454}
   behind: 5
   above: 2
 --- !u!1 &591826795
@@ -1236,6 +1236,12 @@ MonoBehaviour:
   distanceRelaxation: 2
   debug: 1
   trajectory: {fileID: 860141329}
+--- !u!4 &1768771454 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400050, guid: 0e7ee4df08df88c4880f43398f9ad2c2,
+    type: 3}
+  m_PrefabInstance: {fileID: 1768771445}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1788454091
 GameObject:
   m_ObjectHideFlags: 0
