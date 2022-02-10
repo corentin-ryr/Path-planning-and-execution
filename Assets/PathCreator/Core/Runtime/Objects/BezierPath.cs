@@ -604,7 +604,7 @@ namespace PathCreation
         {
             //TODO (check if it is accurate + improve on it)
 
-            int n = 20; //Number of sample points
+            int n = 40; //Number of sample points
 
             List<float[]> radiusList = new List<float[]>();
             float travelDistance = distanceAtFirst;

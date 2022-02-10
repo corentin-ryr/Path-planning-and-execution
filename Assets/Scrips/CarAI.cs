@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-
+using Logging;
 
 namespace UnityStandardAssets.Vehicles.Car
 {
@@ -36,6 +36,8 @@ namespace UnityStandardAssets.Vehicles.Car
         private float currentSteering = 0f;
         private float trackTrajectoryScore = float.MaxValue; //Lower is better
 
+        List<float[]> recordedSpeed = new List<float[]>();
+
 
         private void Start()
         {
@@ -65,67 +67,48 @@ namespace UnityStandardAssets.Vehicles.Car
 
             // this is how you control the car
             m_Car.Move(currentSteering, currentThrottle, currentThrottle, 0f);
+
+            if (Input.GetKey("s"))
+            {
+                trajectory.LogRadiusHistogram(recordedSpeed, "actualSpeed");
+            }
         }
 
-        // Legacy
-        // private void computeThrottle()
-        // {
 
-        //     //Get the curvature at the closest point
-        //     Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
-        //     Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
-        //     // float curvature = trajectory.GetCurvature(closestpoint);
-
-        //     float targetSpeed = trajectory.SpeedAtPosition(currentPosition) / 2.23693629f;
-        //     targetSpeed = Mathf.Max(targetSpeed, 5f);
-        //     float speed = m_Car.CurrentSpeed;
-
-        //     if (targetSpeed > speed)
-        //     {
-        //         currentThrottle = 0.5f;
-        //     }
-        //     else
-        //     {
-        //         currentThrottle = 0f;
-        //     }
-
-        //     Debug.Log("Target speed: " + targetSpeed);
-        //     Debug.Log("Speed: " + speed);
-        // }
 
         private void computeThrottle()
         {
             Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
             Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
 
-            float targetSpeed = trajectory.SpeedAtPosition2(currentPosition); //* 2.23693629f;
+            (float distanceFromStart, float targetSpeed) = trajectory.GetSpeedAtPosition(currentPosition);
+
 
             // targetSpeed = Mathf.Max(targetSpeed, 5f); //The minimum target speed is 5 because otherwise it doesn't start (TODO to be removed after the improved target speed profile ?)
-            targetSpeed = trackTrajectoryScore > 0.3 ? 5f : targetSpeed; //We limit the speed of the car if it goes to far away from the trajectory
+            targetSpeed = trackTrajectoryScore > 0.4 ? 10f : targetSpeed; //We limit the speed of the car if it goes to far away from the trajectory
 
             controller.GainDerivative = gainDerivative;
             controller.GainIntegral = gainIntegral;
             controller.GainProportional = gainProportional;
 
 
-            controller.SetPoint = targetSpeed;
+            controller.SetPoint = targetSpeed * 2.23693629f; //The target speed in car speed unit (MPH)
 
-            float currentSpeed = m_Car.CurrentSpeed / 2.23693629f;
+            float currentSpeed = m_Car.CurrentSpeed; //Also in car unit
             currentSpeed = m_Car.Backing ? -currentSpeed : currentSpeed;
             controller.ProcessVariable = currentSpeed;
             currentThrottle = (float)controller.ControlVariable(System.TimeSpan.FromSeconds(Time.fixedDeltaTime));
 
-            Debug.Log("Target speed: " + targetSpeed);
-            Debug.Log("Speed: " + currentSpeed);
-            Debug.Log("Throttle: " + currentThrottle);
-
+            Debug.Log("Target speed (in game unit): " + targetSpeed);
+            Debug.Log("Speed (in game unit): " + currentSpeed / 2.23693629f); //Divided to have game units
+            recordedSpeed.Add(new float[] { distanceFromStart, currentSpeed / 2.23693629f });
         }
 
         private void computeSteering()
         {
             Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
 
-            Vector3 trajectoryTangent = trajectory.getTangentAhead(currentPosition, m_Car.CurrentSpeed / 2.23693629f );
+            Vector3 trajectoryTangent = trajectory.getTangentAhead(currentPosition, m_Car.CurrentSpeed / 2.23693629f);
 
             float psi = Vector3.Angle(transform.forward, trajectoryTangent);
             psi = Vector3.Cross(transform.forward, trajectoryTangent).y < 0 ? -psi : psi;

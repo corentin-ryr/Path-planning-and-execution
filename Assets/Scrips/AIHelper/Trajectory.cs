@@ -11,7 +11,7 @@ public class Trajectory : MonoBehaviour
     public bool debug = false; //True is the function optimize has been called since the last modification of the waypoints.
 
 
-    private bool optimized = false; //True is the function optimize has been called since the last modification of the waypoints.
+    private bool bezierForm = false; //True is the function optimize has been called since the last modification of the waypoints.
     private List<Vector3> waypoints = new List<Vector3>();
 
     private List<float[]> speedAtDistance;
@@ -68,13 +68,13 @@ public class Trajectory : MonoBehaviour
 
     public void setTrajectoryAsSuccessiveWaypoints(Vector3[] waypoints)
     {
-        optimized = false;
+        bezierForm = false;
         this.waypoints = new List<Vector3>(waypoints);
     }
 
     public void addPointToTrajectory(Vector3 point)
     {
-        optimized = false;
+        bezierForm = false;
         waypoints.Add(point);
     }
 
@@ -85,7 +85,7 @@ public class Trajectory : MonoBehaviour
     {
         Vector3 tangentAtClosestPoint = Vector3.zero;
 
-        if (!optimized)
+        if (!bezierForm)
         {
             Vector3 closestPoint = Vector3.positiveInfinity;
             for (int i = 0; i < waypoints.Count - 1; i++) //We loop through all the segment and find the closest point on each of those segments. Then we keep the best.
@@ -115,7 +115,7 @@ public class Trajectory : MonoBehaviour
     public Vector3 getClosestPoint(Vector3 position)
     {
         Vector3 closestPoint = Vector3.positiveInfinity;
-        if (!optimized)
+        if (!bezierForm)
         {
             for (int i = 0; i < waypoints.Count - 1; i++) //We loop through all the segment and find the closest point on each of those segments. Then we keep the best.
             {
@@ -137,12 +137,63 @@ public class Trajectory : MonoBehaviour
         return closestPoint;
     }
 
+    public (float, float) GetSpeedAtPosition(Vector3 position)
+    {
+        float distanceFromStart = pathCreator.path.GetClosestDistanceAlongPath(position);
+        Debug.Log("Distance: " + distanceFromStart);
+
+        for (int i = 1; i < targetSpeedAtDistance.Count; i++)
+        {
+            if (targetSpeedAtDistance[i][0] > distanceFromStart)
+            {
+                return (distanceFromStart, targetSpeedAtDistance[i][1]);
+            }
+        }
+        return (distanceFromStart, -1f);
+    }
+
+    #endregion
+
+    #region Trajectory optimization ==========================================================================
+
+    public void OptimizeTrajectory()
+    {
+        bezierForm = true;
+        //Transform the series of waypoints in a smooth series of bezier
+        fromWaypointsToBezier();
+
+        gradientMinimization();
+    }
+
+    private void fromWaypointsToBezier()
+    {
+        List<Vector3> controlPoints = new List<Vector3>();
+        controlPoints.Add(waypoints[0]);
+        for (int i = 1; i < waypoints.Count - 1; i++)
+        {
+            Vector3 middlePoint = (waypoints[i] + waypoints[i + 1]) / 2;
+            controlPoints.Add(middlePoint);
+        }
+        controlPoints.Add(waypoints[waypoints.Count - 1]);
+
+        BezierPath bezierPath = new BezierPath(controlPoints, false, PathSpace.xz);
+        bezierPath.ControlPointMode = BezierPath.ControlMode.Aligned;
+        bezierPath.MovePoint(1, terrain_manager.myInfo.start_pos + new Vector3(0, 0, 5));
+
+        pathCreator.bezierPath = bezierPath;
+    }
+
+    private void gradientMinimization()
+    {
+        
+    }
+
+
     //From the curvature profile (curvature as a function of the distance from the start) 
     //and with the car properties we can compute an estimation of the travel time of the curve (necessary for later optimization)
     public float ComputeTravelTime()
     {
-        List<float[]> radiusData;
-        radiusData = pathCreator.bezierPath.RadiusProfile();
+        List<float[]> radiusData = pathCreator.bezierPath.RadiusProfile();
 
         List<float[]> maxSpeedData = new List<float[]>();
         for (int i = 0; i < radiusData.Count; i++)
@@ -180,38 +231,9 @@ public class Trajectory : MonoBehaviour
 
         return curvature;
     }
-
-
     #endregion
 
-    #region Trajectory optimization ==========================================================================
-
-    public void OptimizeTrajectory()
-    {
-        optimized = true;
-        //Transform the series of waypoints in a smooth series of bezier
-        fromWaypointsToBezier();
-
-
-    }
-
-    private void fromWaypointsToBezier()
-    {
-        List<Vector3> controlPoints = new List<Vector3>();
-        controlPoints.Add(waypoints[0]);
-        for (int i = 1; i < waypoints.Count - 1; i++)
-        {
-            Vector3 middlePoint = (waypoints[i] + waypoints[i + 1]) / 2;
-            controlPoints.Add(middlePoint);
-        }
-        controlPoints.Add(waypoints[waypoints.Count - 1]);
-
-        BezierPath bezierPath = new BezierPath(controlPoints, false, PathSpace.xz);
-        bezierPath.ControlPointMode = BezierPath.ControlMode.Aligned;
-        bezierPath.MovePoint(1, terrain_manager.myInfo.start_pos + new Vector3(0, 0, 5));
-
-        pathCreator.bezierPath = bezierPath;
-    }
+    #region Car properties =====================================================================================
 
     private float[] sampleCurvatures = new float[] { 32.8f, 21.8f, 16.28f, 12.95f, 10.71f, 9.10f, 7.89f, 6.93f, 6.15f };
     public float SpeedAtRadius(float radius)
@@ -242,40 +264,11 @@ public class Trajectory : MonoBehaviour
         // return 3.12f + 5.92f * speed;
         return 2f;
     }
-
-    public float SpeedAtPosition(Vector3 position)
-    {
-        float distanceFromStart = pathCreator.path.GetClosestDistanceAlongPath(position);
-        Debug.Log("Distance: " + distanceFromStart);
-
-        //TODO check if it works: it doesn't (to make it work try to make the target change by step instead of using the profile directly)
-        float[] distances = new float[speedAtDistance.Count];
-        for (int i = 0; i < speedAtDistance.Count; i++)
-        {
-            distances[i] = speedAtDistance[i][0];
-        }
-        int index = MathHelper.DichotomicSearch(distances, distanceFromStart);
-        Debug.Log("Index: " + index);
-
-        return speedAtDistance[index][3];
-    }
-
-    public float SpeedAtPosition2(Vector3 position)
-    {
-        float distanceFromStart = pathCreator.path.GetClosestDistanceAlongPath(position);
-
-        for (int i = 1; i < targetSpeedAtDistance.Count; i++)
-        {
-            if (targetSpeedAtDistance[i][0] > distanceFromStart)
-            {
-                return targetSpeedAtDistance[i][1];
-            }
-        }
-        return -1f;
-    }
-
-
     #endregion
+
+
+
+
 
     #region Logging and gizmos
 
