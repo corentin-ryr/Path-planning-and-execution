@@ -5,32 +5,22 @@ using UnityEngine;
 public static class AStar
 {
 
-    public static Vector2Int[] ComputeShortestPath(float[,] traversability, Vector2Int startNode, Vector2Int goalNode)
+    public static Node[] ComputeShortestPath(Node startNode, Node goalNode)
     {
-        PriorityQueue<Vector2Int> discoveredNodes = new PriorityQueue<Vector2Int>();
+        PriorityQueue<Node> discoveredNodes = new PriorityQueue<Node>();
         discoveredNodes.Insert(startNode, 0);
 
-        Vector2Int[,] previousNodes = new Vector2Int[traversability.GetLength(0), traversability.GetLength(1)];
+        Dictionary<Node, Node> previousNodes = new Dictionary<Node, Node>();
 
-        float[,] pathCost = new float[traversability.GetLength(0), traversability.GetLength(1)];
-        float[,] heurCost = new float[traversability.GetLength(0), traversability.GetLength(1)];
+        Dictionary<Node, float> pathCost = new Dictionary<Node, float>();
+        Dictionary<Node, float> heurCost = new Dictionary<Node, float>();
 
-        for (int i = 0; i < pathCost.GetLength(0); i++)
-        {
-            for (int j = 0; j < pathCost.GetLength(1); j++)
-            {
-                pathCost[i, j] = float.PositiveInfinity;
-                heurCost[i, j] = float.PositiveInfinity;
-                previousNodes[i, j] = new Vector2Int(-1, -1);
-            }
-        }
-
-        pathCost[startNode.x, startNode.y] = 0;
-        heurCost[startNode.x, startNode.y] = Vector2Int.Distance(startNode, goalNode);
+        pathCost.Add(startNode, 0);
+        heurCost.Add(startNode, Vector3.Distance(startNode.position, goalNode.position));
 
         while (discoveredNodes.Count() != 0)
         {
-            Vector2Int currentNode = discoveredNodes.Pop();
+            Node currentNode = discoveredNodes.Pop();
 
             if (currentNode == goalNode)
             {
@@ -38,25 +28,23 @@ public static class AStar
                 return reconstructPath(previousNodes, goalNode);
             }
 
-            foreach (Vector2Int node in getNeighbors(currentNode, traversability))
+            foreach (Node node in currentNode.neighbors)
             {
-                float currentCost = pathCost[currentNode.x, currentNode.y] + 1; //Add 1 as it is the cost of a transition between two nodes
-                if (currentCost < pathCost[node.x, node.y])
+                float currentCost = pathCost[currentNode] + 1; //Add 1 as it is the cost of a transition between two nodes
+                if (!pathCost.ContainsKey(node) || currentCost < pathCost[node])
                 {
-                    previousNodes[node.x, node.y] = currentNode;
-                    pathCost[node.x, node.y] = currentCost;
-                    heurCost[node.x, node.y] = currentCost + Vector2Int.Distance(node, goalNode);
+                    previousNodes[node] = currentNode;
+                    pathCost[node] = currentCost;
+                    heurCost[node] = currentCost + Vector3.Distance(node.position, goalNode.position);
 
-                    discoveredNodes.Insert(node, heurCost[node.x, node.y]);
+                    discoveredNodes.Insert(node, heurCost[node]);
                 }
             }
-
         }
 
         return null;
 
     }
-
 
     private static Vector2Int[] getNeighbors(Vector2Int node, float[,] traversability)
     {
@@ -107,14 +95,14 @@ public static class AStar
         return false;
     }
 
-    private static Vector2Int[] reconstructPath(Vector2Int[,] previousNodes, Vector2Int currentNode)
+    private static Node[] reconstructPath(Dictionary<Node, Node> previousNodes, Node currentNode)
     {
-        List<Vector2Int> path = new List<Vector2Int>();
+        List<Node> path = new List<Node>();
         path.Add(currentNode);
 
-        while (previousNodes[currentNode.x, currentNode.y] != new Vector2Int(-1, -1))
+        while (previousNodes.ContainsKey(currentNode))
         {
-            currentNode = previousNodes[currentNode.x, currentNode.y];
+            currentNode = previousNodes[currentNode];
             path.Add(currentNode);
         }
         path.Reverse();

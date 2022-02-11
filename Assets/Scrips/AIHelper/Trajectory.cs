@@ -4,11 +4,15 @@ using UnityEngine;
 using PathCreation;
 using Logging;
 using Analysis;
+using MathNet.Numerics;
 
 [RequireComponent(typeof(PathCreator))]
 public class Trajectory : MonoBehaviour
 {
+    [Header("Debug options")]
     public bool debug = false; //True is the function optimize has been called since the last modification of the waypoints.
+    public bool showGraph = false;
+    public bool showWaypoints = false;
 
 
     private bool bezierForm = false; //True is the function optimize has been called since the last modification of the waypoints.
@@ -20,13 +24,15 @@ public class Trajectory : MonoBehaviour
     TerrainManager terrain_manager;
 
     private PathCreator pathCreator;
+    private List<Node> nodes;
+
+    private int subSamplingX = 2;
+    private int subSamplingZ = 2;
 
 
     void Start()
     {
         pathCreator = GetComponent<PathCreator>();
-
-
 
         findShortestPath();
 
@@ -41,29 +47,18 @@ public class Trajectory : MonoBehaviour
         terrain_manager = GameObject.FindObjectOfType<TerrainManager>();
 
 
-        if (!debug)
-        {
-            Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
-            Vector2Int goalNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.goal_pos);
-            Vector2Int[] pathNodes = AStar.ComputeShortestPath(terrain_manager.myInfo.traversability, startNode, goalNode);
+        (Node entryNode, Node goalNode) = createGraph();
 
-            addPointToTrajectory(terrain_manager.myInfo.start_pos);
-            for (int i = 1; i < pathNodes.Length - 1; i++)
-            {
-                addPointToTrajectory(terrain_manager.myInfo.nodeToCoordinates(pathNodes[i]));
-            }
-            addPointToTrajectory(terrain_manager.myInfo.goal_pos);
-        }
-        else
+        // Vector2Int startNode = terrain_manager.myInfo.coordinatesToNode(terrain_manager.myInfo.start_pos);
+
+        Node[] pathNodes = AStar.ComputeShortestPath(entryNode, goalNode);
+
+        addPointToTrajectory(terrain_manager.myInfo.start_pos);
+        for (int i = 1; i < pathNodes.Length - 1; i++)
         {
-            //Fake Trajectory for debug
-            addPointToTrajectory(new Vector3(100, 0, 100));
-            addPointToTrajectory(new Vector3(100, 0, 130));
-            addPointToTrajectory(new Vector3(100, 0, 160));
-            addPointToTrajectory(new Vector3(100, 0, 190));
-            addPointToTrajectory(new Vector3(100, 0, 220));
-            addPointToTrajectory(new Vector3(100, 0, 250));
+            addPointToTrajectory(pathNodes[i].position);
         }
+        addPointToTrajectory(terrain_manager.myInfo.goal_pos);
     }
 
     public void setTrajectoryAsSuccessiveWaypoints(Vector3[] waypoints)
@@ -77,6 +72,69 @@ public class Trajectory : MonoBehaviour
         bezierForm = false;
         waypoints.Add(point);
     }
+
+    private (Node, Node) createGraph()
+    {
+        Node startNode = new Node(terrain_manager.myInfo.start_pos);
+        Node goalNode = new Node(terrain_manager.myInfo.goal_pos);
+        nodes = new List<Node>();
+        nodes.Add(startNode);
+        nodes.Add(goalNode);
+
+        float[,] traversability = terrain_manager.myInfo.traversability;
+        for (int i = 1; i < traversability.GetLength(0) - 1; i++)
+        {
+            for (int j = 1; j < traversability.GetLength(1) - 1; j++)
+            {
+                if (traversability[i, j] < 0.5) continue; //Traversable so no corner
+
+                for (int u = 0; u < 4; u++)
+                {
+                    Vector2Int neighborSides = new Vector2Int((u / 2) * 2 - 1, (u % 2) * 2 - 1);
+                    if (traversability[i + neighborSides.x, j] > 0.5 ||
+                        traversability[i, j + neighborSides.y] > 0.5 ||
+                        traversability[i + neighborSides.x, j + neighborSides.y] > 0.5) continue;
+
+                    Vector3 position = terrain_manager.myInfo.nodeToCoordinates(new Vector2Int(i, j)) +
+                                        new Vector3(terrain_manager.myInfo.getCubeSize()[0] / 2 * neighborSides.x, 0, terrain_manager.myInfo.getCubeSize()[1] / 2 * neighborSides.y);
+                    Debug.DrawLine(position, position + 5 * new Vector3(neighborSides.x, 0f, neighborSides.y), Color.green, 5000f);
+
+                    if (Physics.Raycast(position, new Vector3(neighborSides.x, 0f, neighborSides.y), 5f)) continue;
+
+                    nodes.Add(new Node(position + 5 * new Vector3(neighborSides.x, 0f, neighborSides.y)));
+                }
+
+            }
+        }
+
+        List<Node> visited = new List<Node>();
+        Queue<Node> worklist = new Queue<Node>();
+
+        Node currentNode = startNode;
+        visited.Add(currentNode);
+        worklist.Enqueue(currentNode);
+
+        while (worklist.Count != 0)
+        {
+            currentNode = worklist.Dequeue();
+
+            foreach (Node neighbor in nodes)
+            {
+                if (!currentNode.neighbors.Contains(neighbor) && !Physics.Raycast(currentNode.position, neighbor.position - currentNode.position, Vector3.Distance(currentNode.position, neighbor.position)))
+                {
+                    visited.Add(neighbor);
+                    worklist.Enqueue(neighbor);
+
+                    currentNode.neighbors.Add(neighbor);
+                }
+            }
+        }
+
+        return (startNode, goalNode);
+    }
+
+
+
 
     #region Getters and accesseurs =====================================================================================================
 
@@ -103,9 +161,9 @@ public class Trajectory : MonoBehaviour
         }
         else
         {
-            float time = pathCreator.path.GetClosestTimeOnPath(position);
-            time = time + speed * 0.001f; //The faster we go, the further away we look for the tangent
-            tangentAtClosestPoint = pathCreator.path.GetDirection(time);
+            float distance = pathCreator.path.GetClosestDistanceAlongPath(position);
+            distance = distance + 5f + 0.1f * speed; // + speed * 0.5f; //The faster we go, the further away we look for the tangent
+            tangentAtClosestPoint = pathCreator.path.GetDirection(distance / pathCreator.path.length);
         }
 
 
@@ -168,9 +226,9 @@ public class Trajectory : MonoBehaviour
     private void fromWaypointsToBezier()
     {
         List<Vector3> controlPoints = new List<Vector3>();
-        controlPoints.Add(waypoints[0]);
-        for (int i = 1; i < waypoints.Count - 1; i++)
+        for (int i = 0; i < waypoints.Count - 1; i++)
         {
+            controlPoints.Add(waypoints[i]);
             Vector3 middlePoint = (waypoints[i] + waypoints[i + 1]) / 2;
             controlPoints.Add(middlePoint);
         }
@@ -185,7 +243,8 @@ public class Trajectory : MonoBehaviour
 
     private void gradientMinimization()
     {
-        
+        //TODO use math.NET to do gradient descent
+        // FindMinimum.OfFunctionGradientConstrained()
     }
 
 
@@ -262,7 +321,7 @@ public class Trajectory : MonoBehaviour
     public float DeccelerationAtSpeed(float speed)
     {
         // return 3.12f + 5.92f * speed;
-        return 2f;
+        return 0.01f;
     }
     #endregion
 
@@ -282,17 +341,36 @@ public class Trajectory : MonoBehaviour
     {
         if (Application.isPlaying)
         {
-            Vector3 old_wp = waypoints[0];
-            foreach (var wp in waypoints)
+            if (showWaypoints)
             {
-                Gizmos.color = Color.blue;
-                Gizmos.DrawLine(old_wp, wp);
-                old_wp = wp;
+                Vector3 old_wp = waypoints[0];
+                foreach (var wp in waypoints)
+                {
+                    Gizmos.color = Color.blue;
+                    Gizmos.DrawLine(old_wp, wp);
+                    old_wp = wp;
 
-                Gizmos.color = Color.red;
-                Gizmos.DrawSphere(wp, 2f);
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawSphere(wp, 2f);
 
+                }
             }
+
+            if (showGraph)
+            {
+                foreach (var node in nodes)
+                {
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawSphere(node.position, 2f);
+
+                    foreach (Node neighbor in node.neighbors)
+                    {
+                        Gizmos.DrawLine(node.position, neighbor.position);
+                    }
+                }
+            }
+
+
         }
 
     }

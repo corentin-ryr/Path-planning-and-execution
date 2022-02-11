@@ -112,6 +112,11 @@ public class TerrainInfo
         }
     }
 
+    public float[] getCubeSize()
+    {
+        return new float[] { (x_high - x_low) / x_N, (z_high - z_low) / z_N };
+    }
+
 
 
     #region Index/Coordinates conversion =========================================================================
@@ -181,6 +186,7 @@ public class TerrainInfo
                     GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     cube.transform.position = new Vector3(get_x_pos(i), 0.0f, get_z_pos(j));
                     cube.transform.localScale = new Vector3(x_step, 15.0f, z_step);
+                    cube.tag = "Box";
                 }
             }
         }

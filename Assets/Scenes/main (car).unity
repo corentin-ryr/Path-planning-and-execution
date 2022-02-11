@@ -683,6 +683,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   debug: 0
+  showGraph: 0
+  showWaypoints: 0
 --- !u!4 &860141330
 Transform:
   m_ObjectHideFlags: 0
@@ -1189,9 +1191,9 @@ MonoBehaviour:
     position_array: []
     rotation_array: []
     time_array: []
-    file_name: 
+    file_name: trajECar
     json_string: 
-  RecordingOn: 0
+  RecordingOn: 1
   PlaybackOn: 0
   position_list: []
   rotation_list: []
@@ -1232,7 +1234,7 @@ MonoBehaviour:
   gainIntegral: 1
   gainProportional: 1
   k: 1
-  ks: 1.5
+  ks: 5
   distanceRelaxation: 2
   debug: 1
   trajectory: {fileID: 860141329}

@@ -94,8 +94,8 @@ public class TrajectoryLogger : MonoBehaviour
             recordedInfo.position_array = position_list.ToArray();
             recordedInfo.rotation_array = rotation_list.ToArray();
             recordedInfo.file_name = "Traj" + System.DateTime.Now.ToLongTimeString().Replace(":","_").Replace(" ","") + ".json";
-            //Debug.Log(System.DateTime.Now.ToLongTimeString());
-            //Debug.Log(System.DateTime.Now.ToShortTimeString());
+            Debug.Log(System.DateTime.Now.ToLongTimeString());
+            Debug.Log(System.DateTime.Now.ToShortTimeString());
 
 
             recordedInfo.WriteDataToFile();
