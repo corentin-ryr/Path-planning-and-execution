@@ -112,9 +112,9 @@ public class TerrainInfo
         }
     }
 
-    public float[] getCubeSize()
+    public Vector2 getCubeSize()
     {
-        return new float[] { (x_high - x_low) / x_N, (z_high - z_low) / z_N };
+        return new Vector2((x_high - x_low) / x_N, (z_high - z_low) / z_N );
     }
 
 

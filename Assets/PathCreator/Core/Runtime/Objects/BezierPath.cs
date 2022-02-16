@@ -583,15 +583,15 @@ namespace PathCreation
             }
         }
 
-        public List<float[]> RadiusProfile()
+        public List<double[]> RadiusProfile()
         {
-            List<float[]> radiusList = new List<float[]>();
+            List<double[]> radiusList = new List<double[]>();
             for (int i = 0; i < NumSegments; i++)
             {
-                List<float[]> radiusCurve;
+                List<double[]> radiusCurve;
                 Vector3[] controlPoints = GetPointsInSegment(i);
 
-                float distanceAtFirst = radiusList.Count > 0 ? radiusList[radiusList.Count - 1][0] : 0f;
+                double distanceAtFirst = radiusList.Count > 0 ? radiusList[radiusList.Count - 1][0] : 0f;
                 radiusCurve = EstimateCurveRadiusProfile(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], distanceAtFirst);
                 radiusList.AddRange(radiusCurve);
             }
@@ -600,14 +600,17 @@ namespace PathCreation
         }
 
 
-        public List<float[]> EstimateCurveRadiusProfile(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float distanceAtFirst = 0f)
+        public List<double[]> EstimateCurveRadiusProfile(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, double distanceAtFirst = 0f)
         {
             //TODO (check if it is accurate + improve on it)
 
-            int n = 40; //Number of sample points
 
-            List<float[]> radiusList = new List<float[]>();
-            float travelDistance = distanceAtFirst;
+            double L = CubicBezierUtility.EstimateCurveLength(p0, p1, p2, p3);
+            int n = (int)(L / 1); //Number of sample points
+
+
+            List<double[]> radiusList = new List<double[]>();
+            double travelDistance = distanceAtFirst;
             for (int i = 0; i < n; i++)
             {
                 Vector3 firstPoint = CubicBezierUtility.EvaluateCurve(p0, p1, p2, p3, (float)i / n);
@@ -615,7 +618,7 @@ namespace PathCreation
                 float curvature = Vector3.Cross(CubicBezierUtility.EvaluateCurveDerivative(p0, p1, p2, p3, i / (float)n), CubicBezierUtility.EvaluateCurveSecondDerivative(p0, p1, p2, p3, i / (float)n)).magnitude / Mathf.Pow(CubicBezierUtility.EvaluateCurveDerivative(p0, p1, p2, p3, i / (float)n).magnitude, 3);
 
                 travelDistance += (firstPoint - secondPoint).magnitude;
-                radiusList.Add(new float[] { travelDistance, 1 / curvature });
+                radiusList.Add(new double[] { travelDistance, 1 / curvature });
             }
 
             // Debug.Log("Bezier travel time: " + travelTime);

@@ -685,6 +685,7 @@ MonoBehaviour:
   debug: 0
   showGraph: 0
   showWaypoints: 0
+  nbIter: 5000
 --- !u!4 &860141330
 Transform:
   m_ObjectHideFlags: 0
@@ -1234,7 +1235,7 @@ MonoBehaviour:
   gainIntegral: 1
   gainProportional: 1
   k: 1
-  ks: 5
+  ks: 3
   distanceRelaxation: 2
   debug: 1
   trajectory: {fileID: 860141329}

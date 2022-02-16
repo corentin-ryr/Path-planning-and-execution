@@ -19,7 +19,7 @@ namespace Analysis
         /// </summary>
         /// <param name="a">List of float that represent the function</param>
         /// <returns></returns>
-        public static List<int> GetValleys(List<float> a, bool maximums = false)
+        public static List<int> GetValleys(List<double> a, bool maximums = false)
         {
             float reverse = maximums ? -1f : 1f;
 
@@ -32,7 +32,7 @@ namespace Analysis
             CurveState s = CurveState.NotGoingDown;
             for (var i = 1; i != a.Count; i++)
             {
-                switch (Mathf.Sign(reverse * a[i] - reverse * a[i - 1]))
+                switch (Math.Sign(reverse * a[i] - reverse * a[i - 1]))
                 {
                     case -1:
                         s = CurveState.GoingDown;
@@ -68,16 +68,16 @@ namespace Analysis
         /// <param name="a">The constraint function (the returned function cannot go above a). In this case it is the max speed at each point.</param>
         /// <param name="AccelerationAtSpeed">Slope constraint</param>
         /// <returns></returns>
-        public static List<float> BestFunctionWithSlopeConstraints(List<float[]> xyFunction, Func<float, float> AccelerationAtSpeed, Func<float, float> DeccelerationAtSpeed)
+        public static List<double> BestFunctionWithSlopeConstraints(List<double[]> xyFunction, Func<double, double> AccelerationAtSpeed, Func<double, double> DeccelerationAtSpeed)
         {
-            List<float> a = new List<float>();
+            List<double> a = new List<double>();
             for (int i = 0; i < xyFunction.Count; i++)
             {
                 a.Add(xyFunction[i][1]);
             }
             List<int> valleys = GetValleys(a);
             valleys.Add(0);
-            float[] b = new float[xyFunction.Count];
+            double[] b = new double[xyFunction.Count];
             for (int i = 0; i < b.Length; i++)
             {
                 b[i] = float.MaxValue;
@@ -87,19 +87,19 @@ namespace Analysis
             foreach (int valleyIndex in valleys)
             {
                 //We compute the partial best function
-                float[] tempB = new float[xyFunction.Count];
+                double[] tempB = new double[xyFunction.Count];
                 tempB[valleyIndex] = xyFunction[valleyIndex][1];
-                b[valleyIndex] = Mathf.Min(tempB[valleyIndex], b[valleyIndex]);
+                b[valleyIndex] = Math.Min(tempB[valleyIndex], b[valleyIndex]);
 
                 //First go through the left side of the function
                 bool canContinue = true;
                 int i = valleyIndex;
                 while (canContinue && i > 0)
                 {
-                    if (xyFunction[i - 1][1] >= xyFunction[i][1] || tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * DeccelerationAtSpeed(tempB[i]) <= xyFunction[i - 1][1])
+                    if (xyFunction[i - 1][1] >= xyFunction[i][1] || tempB[i] + Math.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * DeccelerationAtSpeed(tempB[i]) <= xyFunction[i - 1][1])
                     {
-                        tempB[i - 1] = Mathf.Min(tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * DeccelerationAtSpeed(tempB[i]), xyFunction[i - 1][1]);
-                        b[i - 1] = Mathf.Min(tempB[i - 1], b[i - 1]);
+                        tempB[i - 1] = Math.Min(tempB[i] + Math.Abs(xyFunction[i][0] - xyFunction[i - 1][0]) * DeccelerationAtSpeed(tempB[i]), xyFunction[i - 1][1]);
+                        b[i - 1] = Math.Min(tempB[i - 1], b[i - 1]);
                         i = i - 1;
                     }
                     else
@@ -113,10 +113,10 @@ namespace Analysis
                 i = valleyIndex;
                 while (canContinue && i < xyFunction.Count - 1)
                 {
-                    if (xyFunction[i + 1][1] >= xyFunction[i][1] || tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i + 1][0]) * AccelerationAtSpeed(tempB[i]) <= xyFunction[i + 1][1])
+                    if (xyFunction[i + 1][1] >= xyFunction[i][1] || tempB[i] + Math.Abs(xyFunction[i][0] - xyFunction[i + 1][0]) * AccelerationAtSpeed(tempB[i]) <= xyFunction[i + 1][1])
                     {
-                        tempB[i + 1] = Mathf.Min(tempB[i] + Mathf.Abs(xyFunction[i][0] - xyFunction[i + 1][0]) * AccelerationAtSpeed(tempB[i]), xyFunction[i + 1][1]);
-                        b[i + 1] = Mathf.Min(tempB[i + 1], b[i + 1]);
+                        tempB[i + 1] = Math.Min(tempB[i] + Math.Abs(xyFunction[i][0] - xyFunction[i + 1][0]) * AccelerationAtSpeed(tempB[i]), xyFunction[i + 1][1]);
+                        b[i + 1] = Math.Min(tempB[i + 1], b[i + 1]);
                         i = i + 1;
                     }
                     else
@@ -126,7 +126,7 @@ namespace Analysis
                 }
 
             }
-            return new List<float>(b);
+            return new List<double>(b);
         }
 
         public static int DichotomicSearch(float[] inputArray, float key)
@@ -152,11 +152,11 @@ namespace Analysis
             return min;
         }
 
-        public static List<float[]> pieceWiseConstantFromSpeedProfile(List<float[]> xyFunction)
+        public static List<double[]> pieceWiseConstantFromSpeedProfile(List<double[]> xyFunction)
         {
             //TODO
 
-            List<float> speedProfile = new List<float>();
+            List<double> speedProfile = new List<double>();
             for (int i = 0; i < xyFunction.Count; i++)
             {
                 speedProfile.Add(xyFunction[i][1]);
@@ -170,17 +170,17 @@ namespace Analysis
 
             //For each extremum, store its distance to the start and the target speed BEFORE it (in the segment between the previous extrema and this one)
             //That way we can find the target speed by going through the list and finding the first element with a distance bigger than the current distance.
-            List<float[]> targetSpeedAtDistance = new List<float[]>();
+            List<double[]> targetSpeedAtDistance = new List<double[]>();
             foreach (int index in minimaIndices)
             {
-                targetSpeedAtDistance.Add(new float[] { xyFunction[index][0], xyFunction[index][3] });
+                targetSpeedAtDistance.Add(new double[] { xyFunction[index][0], xyFunction[index][3] });
             }
             foreach (int index in maximaIndices)
             {
-                targetSpeedAtDistance.Add(new float[] { xyFunction[index][0], xyFunction[index][3] });
+                targetSpeedAtDistance.Add(new double[] { xyFunction[index][0], xyFunction[index][3] });
             }
 
-            List<float[]> SortedList = targetSpeedAtDistance.OrderBy(o=>o[0]).ToList();
+            List<double[]> SortedList = targetSpeedAtDistance.OrderBy(o=>o[0]).ToList();
             return SortedList;
         }
     }

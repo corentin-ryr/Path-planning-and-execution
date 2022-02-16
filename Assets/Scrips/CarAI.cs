@@ -36,7 +36,10 @@ namespace UnityStandardAssets.Vehicles.Car
         private float currentSteering = 0f;
         private float trackTrajectoryScore = float.MaxValue; //Lower is better
 
-        List<float[]> recordedSpeed = new List<float[]>();
+        private Vector3 closestpoint;
+        private Vector3 currentPosition;
+
+        List<double[]> recordedSpeed = new List<double[]>();
 
 
         private void Start()
@@ -50,8 +53,6 @@ namespace UnityStandardAssets.Vehicles.Car
 
         private void FixedUpdate()
         {
-
-
             // // this is how you access information about the terrain from a simulated laser range finder
             RaycastHit hit;
             float maxRange = 50f;
@@ -61,6 +62,9 @@ namespace UnityStandardAssets.Vehicles.Car
                 Debug.DrawRay(transform.position, closestObstacleInFront, Color.yellow);
                 // Debug.Log("Did Hit");
             }
+            currentPosition = transform.position + new Vector3(0, 0, 1.27f);
+            closestpoint = trajectory.getClosestPoint(currentPosition);
+
 
             computeSteering();
             computeThrottle();
@@ -78,11 +82,8 @@ namespace UnityStandardAssets.Vehicles.Car
 
         private void computeThrottle()
         {
-            Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
-            Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
 
-            (float distanceFromStart, float targetSpeed) = trajectory.GetSpeedAtPosition(currentPosition);
-
+            (float distanceFromStart, float targetSpeed) = trajectory.GetSpeedAtPosition(closestpoint);
 
             // targetSpeed = Mathf.Max(targetSpeed, 5f); //The minimum target speed is 5 because otherwise it doesn't start (TODO to be removed after the improved target speed profile ?)
             targetSpeed = trackTrajectoryScore > 0.4 ? 10f : targetSpeed; //We limit the speed of the car if it goes to far away from the trajectory
@@ -101,19 +102,18 @@ namespace UnityStandardAssets.Vehicles.Car
 
             Debug.Log("Target speed (in game unit): " + targetSpeed);
             Debug.Log("Speed (in game unit): " + currentSpeed / 2.23693629f); //Divided to have game units
-            recordedSpeed.Add(new float[] { distanceFromStart, currentSpeed / 2.23693629f });
+            recordedSpeed.Add(new double[] { distanceFromStart, currentSpeed / 2.23693629f });
         }
 
         private void computeSteering()
         {
-            Vector3 currentPosition = transform.position + new Vector3(0, 0, 1.27f);
-
-            Vector3 trajectoryTangent = trajectory.getTangentAhead(currentPosition, m_Car.CurrentSpeed / 2.23693629f);
+            Vector3 trajectoryTangent = trajectory.getTangentAhead(closestpoint, m_Car.CurrentSpeed / 2.23693629f);
+            Debug.DrawRay(closestpoint, trajectoryTangent * 2, Color.red);
 
             float psi = Vector3.Angle(transform.forward, trajectoryTangent);
             psi = Vector3.Cross(transform.forward, trajectoryTangent).y < 0 ? -psi : psi;
 
-            Vector3 closestpoint = trajectory.getClosestPoint(currentPosition);
+
             float carDistanceToTrajectory = Vector3.Distance(currentPosition, closestpoint);
             float crossTrack = Mathf.Atan((k * carDistanceToTrajectory) / (m_Car.CurrentSpeed / 2.23693629f + ks)) * 360 / Mathf.PI;
             crossTrack = Vector3.Cross(transform.forward, closestpoint - currentPosition).y < 0 ? -crossTrack : crossTrack;
@@ -124,6 +124,11 @@ namespace UnityStandardAssets.Vehicles.Car
         }
 
 
+        void OnDrawGizmos()
+        {
+            Gizmos.DrawSphere(currentPosition, 0.1f);
+            Debug.DrawLine(currentPosition, closestpoint, Color.blue);
+        }
 
 
     }

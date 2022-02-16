@@ -8,15 +8,15 @@ namespace Logging
 {
     public class DataLogger
     {
-        List<float[]> keyFrames;
+        List<double[]> keyFrames;
 
-        public List<float[]> KeyFrames { get => keyFrames; set => keyFrames = value; }
+        public List<double[]> KeyFrames { get => keyFrames; set => keyFrames = value; }
 
         public DataLogger()
         {
-            KeyFrames = new List<float[]>();
+            KeyFrames = new List<double[]>();
         }
-        public DataLogger(List<float[]> keyFrames)
+        public DataLogger(List<double[]> keyFrames)
         {
             KeyFrames = keyFrames;
         }
