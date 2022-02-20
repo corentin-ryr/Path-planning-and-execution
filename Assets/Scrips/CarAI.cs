@@ -1,8 +1,7 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
-using Logging;
+
 
 namespace UnityStandardAssets.Vehicles.Car
 {
@@ -40,7 +39,7 @@ namespace UnityStandardAssets.Vehicles.Car
         private Vector3 currentPosition;
 
         List<double[]> recordedSpeed = new List<double[]>();
-
+        private bool canDrive = false;
 
         private void Start()
         {
@@ -49,7 +48,19 @@ namespace UnityStandardAssets.Vehicles.Car
             m_Car = GetComponent<CarController>();
 
         }
+        private void OnEnable()
+        {
+            EventManager.FinishedOptimizing += EventManagerOnFinishedOptimizing;
+        }
+        private void OnDisable()
+        {
+            EventManager.FinishedOptimizing -= EventManagerOnFinishedOptimizing;
+        }
 
+        private void EventManagerOnFinishedOptimizing()
+        {
+            canDrive = true;
+        }
 
         private void FixedUpdate()
         {
@@ -62,15 +73,19 @@ namespace UnityStandardAssets.Vehicles.Car
                 Debug.DrawRay(transform.position, closestObstacleInFront, Color.yellow);
                 // Debug.Log("Did Hit");
             }
-            currentPosition = transform.position + new Vector3(0, 0, 1.27f);
-            closestpoint = trajectory.getClosestPoint(currentPosition);
+
+            if (canDrive)
+            {
+                currentPosition = transform.position + transform.forward * 1.27f; ;
+                closestpoint = trajectory.getClosestPoint(currentPosition);
 
 
-            computeSteering();
-            computeThrottle();
+                computeSteering();
+                computeThrottle();
 
-            // this is how you control the car
-            m_Car.Move(currentSteering, currentThrottle, currentThrottle, 0f);
+                // this is how you control the car
+                m_Car.Move(currentSteering, currentThrottle, currentThrottle, 0f);
+            }
 
             if (Input.GetKey("s"))
             {
@@ -85,7 +100,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
             (float distanceFromStart, float targetSpeed) = trajectory.GetSpeedAtPosition(closestpoint);
 
-            // targetSpeed = Mathf.Max(targetSpeed, 5f); //The minimum target speed is 5 because otherwise it doesn't start (TODO to be removed after the improved target speed profile ?)
+            targetSpeed = Mathf.Max(targetSpeed, 10f); //The minimum target speed is 5 because otherwise it doesn't start (TODO to be removed after the improved target speed profile ?)
             targetSpeed = trackTrajectoryScore > 0.4 ? 10f : targetSpeed; //We limit the speed of the car if it goes to far away from the trajectory
 
             controller.GainDerivative = gainDerivative;

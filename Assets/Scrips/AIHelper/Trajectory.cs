@@ -1,4 +1,4 @@
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using MathNet.Numerics.LinearAlgebra;
 using UnityEngine;
@@ -14,9 +14,12 @@ public class Trajectory : MonoBehaviour
     public bool debug = false; //True is the function optimize has been called since the last modification of the waypoints.
     public bool showGraph = false;
     public bool showWaypoints = false;
+    public bool optimize = true;
+
 
     [Header("Optimization parameters")]
     public int nbIter = 500;
+    public int nbEpochs;
 
 
     private bool bezierForm = false; //True is the function optimize has been called since the last modification of the waypoints.
@@ -30,9 +33,7 @@ public class Trajectory : MonoBehaviour
     private List<Node> nodes;
     // private VertexPath path;
 
-    private float carWidth = 4f;
-
-
+    private float carWidth = 5f;
 
     void Start()
     {
@@ -41,9 +42,20 @@ public class Trajectory : MonoBehaviour
         findShortestPath();
 
         OptimizeTrajectory();
+    }
 
+    void OnEnable()
+    {
+        EventManager.FinishedOptimizing += OnStartDriving;
+    }
+    void OnDisable()
+    {
+        EventManager.FinishedOptimizing -= OnStartDriving;
+    }
+
+    public void OnStartDriving()
+    {
         Debug.Log("Travel time: " + ComputeTravelTime());
-
         ComputeTargetSpeeds();
     }
 
@@ -147,7 +159,6 @@ public class Trajectory : MonoBehaviour
 
     #region Getters and accesseurs =====================================================================================================
 
-
     public UnityEngine.Vector3 getTangentAhead(UnityEngine.Vector3 position, float speed)
     {
         UnityEngine.Vector3 tangentAtClosestPoint = UnityEngine.Vector3.zero;
@@ -228,11 +239,14 @@ public class Trajectory : MonoBehaviour
         bezierForm = true;
         //Transform the series of waypoints in a smooth series of bezier
         fromWaypointsToBezier();
-
-        // ComputePenalty();
-        gradientMinimization();
-
-        // path = pathCreator.path;
+        if (optimize)
+        {
+            StartCoroutine(gradientMinimization2());
+        }
+        else
+        {
+            EventManager.OnFinishedOptimizing();
+        }
     }
 
     private void fromWaypointsToBezier()
@@ -253,6 +267,17 @@ public class Trajectory : MonoBehaviour
         pathCreator.bezierPath = bezierPath;
     }
 
+    private double costFunction(Vector<double> input)
+    {
+        setPathFromVector(input);
+
+        double penalty = ComputePenalty();
+        double travelTime = ComputeTravelTime();
+        // Debug.Log(penalty);
+        return travelTime + penalty;
+    }
+
+    #region First optimization test ===============================================================================
     private void gradientMinimization()
     {
         //TODO use math.NET to do gradient descent
@@ -267,16 +292,6 @@ public class Trajectory : MonoBehaviour
 
         // Vector<double> features = getPathVector();
         // setPathFromVector(features);
-    }
-
-    private double costFunction(Vector<double> input)
-    {
-        setPathFromVector(input);
-
-        double penalty = ComputePenalty();
-        double travelTime = ComputeTravelTime();
-        // Debug.Log(penalty);
-        return travelTime + penalty;
     }
 
     private Vector<double> getPathVector()
@@ -306,7 +321,7 @@ public class Trajectory : MonoBehaviour
             Vector3 controlPoint = pathCreator.bezierPath.GetPoint(i * 3 - 1);
 
             vectorPosition = (nbPoints - 2) * 2 + i - 1;
-            features[vectorPosition] = Vector3.Angle(Vector3.forward, controlPoint - anchorPoint) / 360;
+            features[vectorPosition] = Vector3.SignedAngle(Vector3.forward, controlPoint - anchorPoint, Vector3.up) / 360;
         }
 
         vectorPosition = (nbPoints - 2) * 2 + (nbPoints - 1);
@@ -366,6 +381,143 @@ public class Trajectory : MonoBehaviour
             pathCreator.bezierPath.SetPoint(i * 3 + 1, anchorPoint - SetVectorFromAngle(orientation) * magnitude2);
         }
     }
+    #endregion
+
+
+    #region Second optimization test ==========================================================================
+    private int currentSampledPoint;
+    private IEnumerator gradientMinimization2()
+    {
+        //Number of epochs (we sample a point each time and optimize the proximity)
+        for (int i = 0; i < nbEpochs; i++)
+        {
+            try
+            {
+                FindMinimum.OfFunction(costFunction2, getVectorFromPoint(Random.Range(1, pathCreator.bezierPath.NumAnchorPoints - 1)), 1E-7, nbIter);
+            }
+            catch (System.Exception)
+            {
+                Debug.Log("Exceeded iteration numbers");
+            }
+            Debug.Log("epoch " + i);
+            Debug.Log("Penalty: " + ComputePenalty());
+
+            yield return null;
+
+        }
+
+        EventManager.OnFinishedOptimizing();
+
+        // setPathFromVector2(getVectorFromPoint(3));
+        // yield return null;
+    }
+
+    private double costFunction2(Vector<double> input)
+    {
+        setPathFromVector2(input);
+
+        double penalty = ComputePenalty();
+        double travelTime = ComputeTravelTime();
+        return travelTime + penalty;
+    }
+
+    private Vector<double> getVectorFromPoint(int pointIndex)
+    {
+        //We cant move the first and last points, we cant change the first point orientation.
+        //The features are the position of point (2 doubles), 
+        // the orientation of the tangent (the control points are aligned so only 1 double) 
+        // and the length of the control point (1 double per control point)
+        currentSampledPoint = pointIndex;
+        List<double> features = new List<double>();
+
+        //Adding the position of the anchorpoint
+        Vector3 segmentPoints = pathCreator.bezierPath.GetPoint(pointIndex * 3);
+        features.Add(segmentPoints.x);
+        features.Add(segmentPoints.z);
+
+        //Adding the orientation of the 3 points (or 2 if its the first)
+        Vector3 anchorPoint;
+        Vector3 controlPoint;
+        if (pointIndex > 1)
+        {
+            anchorPoint = pathCreator.bezierPath.GetPoint((pointIndex - 1) * 3);
+            controlPoint = pathCreator.bezierPath.GetPoint((pointIndex - 1) * 3 - 1);
+            features.Add(Vector3.SignedAngle(Vector3.forward, controlPoint - anchorPoint, Vector3.up) / 360);
+        }
+
+        anchorPoint = pathCreator.bezierPath.GetPoint(pointIndex * 3);
+        controlPoint = pathCreator.bezierPath.GetPoint(pointIndex * 3 - 1);
+        features.Add(Vector3.SignedAngle(Vector3.forward, controlPoint - anchorPoint, Vector3.up) / 360);
+
+        anchorPoint = pathCreator.bezierPath.GetPoint((pointIndex + 1) * 3);
+        controlPoint = pathCreator.bezierPath.GetPoint((pointIndex + 1) * 3 - 1);
+        features.Add(Vector3.SignedAngle(Vector3.forward, controlPoint - anchorPoint, Vector3.up) / 360);
+
+        //Adding the magnitude of the 4 points
+        anchorPoint = pathCreator.bezierPath.GetPoint((pointIndex - 1) * 3);
+        controlPoint = pathCreator.bezierPath.GetPoint((pointIndex - 1) * 3 + 1);
+        features.Add((anchorPoint - controlPoint).magnitude);
+
+        anchorPoint = pathCreator.bezierPath.GetPoint(pointIndex * 3);
+        controlPoint = pathCreator.bezierPath.GetPoint(pointIndex * 3 - 1);
+        features.Add((anchorPoint - controlPoint).magnitude);
+        controlPoint = pathCreator.bezierPath.GetPoint(pointIndex * 3 + 1);
+        features.Add((anchorPoint - controlPoint).magnitude);
+
+        anchorPoint = pathCreator.bezierPath.GetPoint((pointIndex + 1) * 3);
+        controlPoint = pathCreator.bezierPath.GetPoint((pointIndex + 1) * 3 - 1);
+        features.Add((anchorPoint - controlPoint).magnitude);
+
+        return Vector<double>.Build.DenseOfArray(features.ToArray());
+    }
+
+    private void setPathFromVector2(Vector<double> features)
+    {
+        pathCreator.bezierPath.SetPoint(currentSampledPoint * 3, new Vector3((float)features[0], 0, (float)features[1]));
+        //Then we set the control points (4 to 5 control points to set)
+
+        Vector3 anchorPoint;
+        Vector3 controlPoint;
+        float orientation;
+        float magnitude;
+        if (currentSampledPoint == 1)
+        {
+            anchorPoint = pathCreator.bezierPath.GetPoint(0);
+            controlPoint = pathCreator.bezierPath.GetPoint(1);
+            pathCreator.bezierPath.SetPoint(1, anchorPoint + (controlPoint - anchorPoint).normalized * (float)features[4]);
+        }
+        else
+        {
+            anchorPoint = pathCreator.bezierPath.GetPoint((currentSampledPoint - 1) * 3);
+            orientation = (float)features[2] * 360;
+            magnitude = (float)features[5];
+            pathCreator.bezierPath.SetPoint((currentSampledPoint - 1) * 3 + 1, anchorPoint - SetVectorFromAngle(orientation) * magnitude);
+            magnitude = (pathCreator.bezierPath.GetPoint((currentSampledPoint - 1) * 3 - 1) - anchorPoint).magnitude;
+            pathCreator.bezierPath.SetPoint((currentSampledPoint - 1) * 3 - 1, anchorPoint + SetVectorFromAngle(orientation) * magnitude);
+        }
+        int isFirstPoint = currentSampledPoint == 1 ? 1 : 0;
+
+        anchorPoint = pathCreator.bezierPath.GetPoint(currentSampledPoint * 3);
+        orientation = (float)features[3 - isFirstPoint] * 360;
+        magnitude = (float)features[6 - isFirstPoint];
+        pathCreator.bezierPath.SetPoint(currentSampledPoint * 3 - 1, anchorPoint + SetVectorFromAngle(orientation) * magnitude);
+        magnitude = (float)features[7 - isFirstPoint];
+        pathCreator.bezierPath.SetPoint(currentSampledPoint * 3 + 1, anchorPoint - SetVectorFromAngle(orientation) * magnitude);
+
+        anchorPoint = pathCreator.bezierPath.GetPoint((currentSampledPoint + 1) * 3);
+        orientation = (float)features[4 - isFirstPoint] * 360;
+        magnitude = (float)features[8 - isFirstPoint];
+        pathCreator.bezierPath.SetPoint((currentSampledPoint + 1) * 3 - 1, anchorPoint + SetVectorFromAngle(orientation) * magnitude);
+        if (currentSampledPoint != pathCreator.bezierPath.NumAnchorPoints - 1)
+        {
+            magnitude = (pathCreator.bezierPath.GetPoint((currentSampledPoint + 1) * 3 + 1) - anchorPoint).magnitude;
+            pathCreator.bezierPath.SetPoint((currentSampledPoint + 1) * 3 + 1, anchorPoint - SetVectorFromAngle(orientation) * magnitude);
+        }
+    }
+
+    #endregion
+
+    #endregion
 
     private Vector3 SetVectorFromAngle(float angle)
     {
@@ -402,6 +554,8 @@ public class Trajectory : MonoBehaviour
         for (int i = 0; i < points.Length; i++)
         {
             v2Points[i] = new Vector2(points[i].x, points[i].z);
+
+            // if (i >= 1) Debug.DrawLine(points[i - 1], points[i]);
         }
         Vector2 cubeSize = (terrain_manager.myInfo.getCubeSize() + new Vector2(carWidth, carWidth)) / 2;
 
@@ -436,7 +590,7 @@ public class Trajectory : MonoBehaviour
         // Debug.Log(minDst);
         // Debug.Log(badPoint);
         // Debug.DrawLine(Vector3.zero, badPoint, Color.blue, 100);
-        return -minDst * 20f;
+        return 1500 * (1 - Mathf.Exp(minDst / 2));
     }
 
     public void ComputeTargetSpeeds()
@@ -468,7 +622,6 @@ public class Trajectory : MonoBehaviour
         return radiusData;
     }
 
-    #endregion
 
     #region Car properties =====================================================================================
 
@@ -479,12 +632,12 @@ public class Trajectory : MonoBehaviour
 
         if (radius < 6)
         {
-            return 0.5 * radius;
+            return 0.05 * radius;
         }
         else
         {
             //Equation between the curvature (in meter) and the speed (in m/s). Found experimentally.
-            return 9.56 + 0.931 * radius - 5.94E-3 * radius * radius;
+            return (9.56 + 0.931 * radius - 5.94E-3 * radius * radius) * 0.8; //The 0.9 is a safety constant
 
         }
 
@@ -509,7 +662,7 @@ public class Trajectory : MonoBehaviour
     public double DeccelerationAtSpeed(double speed)
     {
         // return 3.12f + 5.92f * speed;
-        return 0.1;
+        return 0.5;
     }
     #endregion
 
@@ -517,7 +670,7 @@ public class Trajectory : MonoBehaviour
 
 
 
-    #region Logging and gizmos
+    #region Logging and gizmos =================================================================================
 
     public void LogRadiusHistogram(List<double[]> radiusData, string filename = "export")
     {

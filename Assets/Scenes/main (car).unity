@@ -684,8 +684,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debug: 0
   showGraph: 0
-  showWaypoints: 0
-  nbIter: 5000
+  showWaypoints: 1
+  optimize: 1
+  nbIter: 400
+  nbEpochs: 120
 --- !u!4 &860141330
 Transform:
   m_ObjectHideFlags: 0

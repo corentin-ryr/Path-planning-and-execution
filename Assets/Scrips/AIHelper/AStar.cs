@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -30,7 +29,7 @@ public static class AStar
 
             foreach (Node node in currentNode.neighbors)
             {
-                float currentCost = pathCost[currentNode] + 1; //Add 1 as it is the cost of a transition between two nodes
+                float currentCost = pathCost[currentNode] + Vector3.Distance(node.position, currentNode.position); //Add 1 as it is the cost of a transition between two nodes
                 if (!pathCost.ContainsKey(node) || currentCost < pathCost[node])
                 {
                     previousNodes[node] = currentNode;

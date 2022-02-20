@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using Newtonsoft.Json; // Import JSON.NET from Unity Asset store (not needed in 2022 version)
 
 
