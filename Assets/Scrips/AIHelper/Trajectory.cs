@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using MathNet.Numerics.LinearAlgebra;
 using UnityEngine;
 using PathCreation;
@@ -15,6 +16,7 @@ public class Trajectory : MonoBehaviour
     public bool showGraph = false;
     public bool showWaypoints = false;
     public bool optimize = true;
+    public bool showPath;
 
 
     [Header("Optimization parameters")]
@@ -34,6 +36,7 @@ public class Trajectory : MonoBehaviour
     // private VertexPath path;
 
     private float carWidth = 5f;
+    private int currentSampledPoint;
 
     void Start()
     {
@@ -93,6 +96,7 @@ public class Trajectory : MonoBehaviour
 
     private (Node, Node) createGraph()
     {
+        //Create the nodes
         Node startNode = new Node(terrain_manager.myInfo.start_pos);
         Node goalNode = new Node(terrain_manager.myInfo.goal_pos);
         nodes = new List<Node>();
@@ -118,7 +122,7 @@ public class Trajectory : MonoBehaviour
                     Vector2 offset = terrain_manager.myInfo.getCubeSize() / 2 * (Vector2)neighborSides;
                     Vector3 position = terrain_manager.myInfo.nodeToCoordinates(new Vector2Int(i, j)) + new Vector3(offset.x, 0f, offset.y);
 
-                    Debug.DrawLine(position, position + 5 * new Vector3(neighborSides.x, 0f, neighborSides.y), Color.green, 5000f);
+                    if (showGraph) Debug.DrawLine(position + Vector3.up * 0.1f, position + 5 * new Vector3(neighborSides.x, 0f, neighborSides.y) + Vector3.up * 0.1f, Color.green);
 
                     if (Physics.Raycast(position, new Vector3(neighborSides.x, 0f, neighborSides.y), 5f)) continue;
 
@@ -126,6 +130,15 @@ public class Trajectory : MonoBehaviour
                 }
 
             }
+        }
+
+        //Link the nodes
+        GameObject[] cubes = GameObject.FindGameObjectsWithTag("Box");
+
+        Vector3 initialScale = cubes[0].transform.localScale;
+        foreach (GameObject cube in cubes)
+        {
+            cube.transform.localScale = initialScale + new Vector3(carWidth / 2, 0, carWidth / 2);
         }
 
         List<Node> visited = new List<Node>();
@@ -150,6 +163,12 @@ public class Trajectory : MonoBehaviour
                 }
             }
         }
+
+        foreach (GameObject cube in cubes)
+        {
+            cube.transform.localScale = initialScale;
+        }
+
 
         return (startNode, goalNode);
     }
@@ -183,7 +202,7 @@ public class Trajectory : MonoBehaviour
         {
             float distance = pathCreator.path.GetClosestDistanceAlongPath(position);
             // distance = distance + 0.1f * speed; //The faster we go, the further away we look for the tangent
-            distance = distance + Mathf.Clamp(0.1f / speed, 0, 10); //The faster we go, the further away we look for the tangent
+            distance = distance + Mathf.Clamp(0.5f / speed, 0, 10); //The faster we go, the further away we look for the tangent
             tangentAtClosestPoint = pathCreator.path.GetDirection(distance / pathCreator.path.length);
         }
 
@@ -238,9 +257,9 @@ public class Trajectory : MonoBehaviour
     {
         bezierForm = true;
         //Transform the series of waypoints in a smooth series of bezier
-        fromWaypointsToBezier();
         if (optimize)
         {
+            fromWaypointsToBezier();
             StartCoroutine(gradientMinimization2());
         }
         else
@@ -255,8 +274,11 @@ public class Trajectory : MonoBehaviour
         for (int i = 0; i < waypoints.Count - 1; i++)
         {
             controlPoints.Add(waypoints[i]);
-            UnityEngine.Vector3 middlePoint = (waypoints[i] + waypoints[i + 1]) / 2;
-            controlPoints.Add(middlePoint);
+            if (Vector3.Distance(waypoints[i], waypoints[i + 1]) > 25)
+            {
+                UnityEngine.Vector3 middlePoint = (waypoints[i] + waypoints[i + 1]) / 2;
+                controlPoints.Add(middlePoint);
+            }
         }
         controlPoints.Add(waypoints[waypoints.Count - 1]);
 
@@ -265,15 +287,16 @@ public class Trajectory : MonoBehaviour
         bezierPath.MovePoint(1, terrain_manager.myInfo.start_pos + new UnityEngine.Vector3(0, 0, 5));
 
         pathCreator.bezierPath = bezierPath;
+        pathCreator.showPath = showPath;
     }
 
     private double costFunction(Vector<double> input)
     {
         setPathFromVector(input);
 
-        double penalty = ComputePenalty();
+        double penalty = ComputeObstaclePenalty();
         double travelTime = ComputeTravelTime();
-        // Debug.Log(penalty);
+
         return travelTime + penalty;
     }
 
@@ -385,7 +408,7 @@ public class Trajectory : MonoBehaviour
 
 
     #region Second optimization test ==========================================================================
-    private int currentSampledPoint;
+
     private IEnumerator gradientMinimization2()
     {
         //Number of epochs (we sample a point each time and optimize the proximity)
@@ -393,14 +416,15 @@ public class Trajectory : MonoBehaviour
         {
             try
             {
-                FindMinimum.OfFunction(costFunction2, getVectorFromPoint(Random.Range(1, pathCreator.bezierPath.NumAnchorPoints - 1)), 1E-7, nbIter);
+                FindMinimum.OfFunction(costFunction2, getVectorFromPoint(UnityEngine.Random.Range(1, pathCreator.bezierPath.NumAnchorPoints - 1)), 1E-7, nbIter);
             }
             catch (System.Exception)
             {
                 Debug.Log("Exceeded iteration numbers");
             }
             Debug.Log("epoch " + i);
-            Debug.Log("Penalty: " + ComputePenalty());
+            Debug.Log("Penalty: " + ComputeObstaclePenalty());
+            ComputeTravelTime();
 
             yield return null;
 
@@ -416,7 +440,7 @@ public class Trajectory : MonoBehaviour
     {
         setPathFromVector2(input);
 
-        double penalty = ComputePenalty();
+        double penalty = ComputeObstaclePenalty();
         double travelTime = ComputeTravelTime();
         return travelTime + penalty;
     }
@@ -530,7 +554,8 @@ public class Trajectory : MonoBehaviour
     //and with the car properties we can compute an estimation of the travel time of the curve (necessary for later optimization)
     public double ComputeTravelTime()
     {
-        List<double[]> radiusData = ComputeRadiusData();
+        List<double[]> radiusData = ComputeSpeedData();
+        double lowRadiusPenalty = 0;
 
         double travelTime = 0;
         for (int i = 0; i < radiusData.Count - 1; i++)
@@ -539,13 +564,20 @@ public class Trajectory : MonoBehaviour
             {
                 travelTime += (radiusData[i + 1][0] - radiusData[i][0]) / (radiusData[i][3]); //The distance between consecutive steps / the speed at the step
             }
+            if (radiusData[i][1] < 7f)
+            {
+                lowRadiusPenalty += (radiusData[i + 1][0] - radiusData[i][0]) / (radiusData[i][1] + 0.5);
+            }
         }
-        return travelTime;
+
+        if (debug) Debug.Log(Math.Exp(lowRadiusPenalty * 2));
+        return travelTime + Math.Exp(lowRadiusPenalty * 2);
     }
 
-    public double ComputePenalty()
+    public double ComputeObstaclePenalty()
     {
-        float minDst = 0;
+        double minDst = 0;
+        double totalDst = 0;
         Vector3 badPoint = Vector3.zero;
 
         //For each sampled point on the vertexPath, we check its distance to the obstacles.
@@ -577,7 +609,7 @@ public class Trajectory : MonoBehaviour
                     Vector2 posInsideBox = Vector2.Min(offset, Vector2.zero);
                     float dstInsideBox = posInsideBox.x < posInsideBox.y ? posInsideBox.y : posInsideBox.x; //Distance <= 0 (0 if outside of the cube and negative if inside)
 
-
+                    totalDst += dstInsideBox;
                     if (dstInsideBox < minDst)
                     {
                         minDst = dstInsideBox;
@@ -590,19 +622,21 @@ public class Trajectory : MonoBehaviour
         // Debug.Log(minDst);
         // Debug.Log(badPoint);
         // Debug.DrawLine(Vector3.zero, badPoint, Color.blue, 100);
-        return 1500 * (1 - Mathf.Exp(minDst / 2));
+        // return 1500 * (1 - Math.Exp(minDst / 2));
+        // return 1500 * (1 - Math.Exp(totalDst / 20));
+        return Math.Exp(-totalDst / 10) + Math.Exp(-minDst * 5);
     }
 
     public void ComputeTargetSpeeds()
     {
-        List<double[]> radiusData = ComputeRadiusData();
+        List<double[]> radiusData = ComputeSpeedData();
 
         targetSpeedAtDistance = MathHelper.pieceWiseConstantFromSpeedProfile(radiusData);
         LogRadiusHistogram(radiusData, "speedData");
         LogRadiusHistogram(targetSpeedAtDistance, "targetSpeedData");
     }
 
-    private List<double[]> ComputeRadiusData()
+    private List<double[]> ComputeSpeedData() //Return list of elements: 1) distance from start, 2) radius, 3) max speed at radius, 4) actual speed
     {
         List<double[]> radiusData = pathCreator.bezierPath.RadiusProfile();
 
@@ -630,15 +664,14 @@ public class Trajectory : MonoBehaviour
         // radius = radius < 6 ? 6 : radius;
         radius = radius > 33 ? 33 : radius;//Range of values in which the speed-curvature function is valid
 
-        if (radius < 6)
+        if (radius < 7)
         {
             return 0.05 * radius;
         }
         else
         {
             //Equation between the curvature (in meter) and the speed (in m/s). Found experimentally.
-            return (9.56 + 0.931 * radius - 5.94E-3 * radius * radius) * 0.8; //The 0.9 is a safety constant
-
+            return (8.72 + 0.988 * radius - 6.94E-3 * radius * radius) * 0.8; //The 0.9 is a safety constant
         }
 
 
@@ -662,7 +695,7 @@ public class Trajectory : MonoBehaviour
     public double DeccelerationAtSpeed(double speed)
     {
         // return 3.12f + 5.92f * speed;
-        return 0.5;
+        return 0.3;
     }
     #endregion
 
@@ -701,12 +734,13 @@ public class Trajectory : MonoBehaviour
             {
                 foreach (var node in nodes)
                 {
-                    Gizmos.color = Color.red;
-                    Gizmos.DrawSphere(node.position, 2f);
+                    Gizmos.color = Color.green;
+                    Gizmos.DrawSphere(node.position, 1f);
 
                     foreach (Node neighbor in node.neighbors)
                     {
-                        Gizmos.DrawLine(node.position, neighbor.position);
+                        Gizmos.color = Color.yellow;
+                        Gizmos.DrawLine(node.position + Vector3.up * 0.1f, neighbor.position + Vector3.up * 0.1f);
                     }
                 }
             }

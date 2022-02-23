@@ -40,6 +40,7 @@ namespace UnityStandardAssets.Vehicles.Car
 
         List<double[]> recordedSpeed = new List<double[]>();
         private bool canDrive = false;
+        private bool driveForward = true;
 
         private void Start()
         {
@@ -66,26 +67,43 @@ namespace UnityStandardAssets.Vehicles.Car
         {
             // // this is how you access information about the terrain from a simulated laser range finder
             RaycastHit hit;
-            float maxRange = 50f;
+            float maxRange = 5f;
             if (Physics.Raycast(transform.position + transform.up, transform.TransformDirection(Vector3.forward), out hit, maxRange))
             {
                 Vector3 closestObstacleInFront = transform.TransformDirection(Vector3.forward) * hit.distance;
                 Debug.DrawRay(transform.position, closestObstacleInFront, Color.yellow);
                 // Debug.Log("Did Hit");
+
+                driveForward = false;
             }
 
-            if (canDrive)
+            if (!canDrive) return;
+
+            Debug.Log(driveForward);
+            if (driveForward)
             {
-                currentPosition = transform.position + transform.forward * 1.27f; ;
+                currentPosition = transform.position + transform.forward * (1.27f + 0.5f); ;
                 closestpoint = trajectory.getClosestPoint(currentPosition);
 
+                (float distanceFromStart, float targetSpeed) = trajectory.GetSpeedAtPosition(closestpoint);
+
+                targetSpeed = Mathf.Max(targetSpeed, 5f); //The minimum target speed is 5 because otherwise it doesn't start (TODO to be removed after the improved target speed profile ?)
+                targetSpeed = trackTrajectoryScore > 0.4 ? 10f : targetSpeed; //We limit the speed of the car if it goes to far away from the trajectory
 
                 computeSteering();
-                computeThrottle();
+                computeThrottle(targetSpeed);
+                recordedSpeed.Add(new double[] { distanceFromStart, m_Car.CurrentSpeed / 2.23693629f });
 
                 // this is how you control the car
                 m_Car.Move(currentSteering, currentThrottle, currentThrottle, 0f);
             }
+            else
+            {
+                driveBackward();
+            }
+
+
+
 
             if (Input.GetKey("s"))
             {
@@ -95,14 +113,8 @@ namespace UnityStandardAssets.Vehicles.Car
 
 
 
-        private void computeThrottle()
+        private void computeThrottle(float targetSpeed)
         {
-
-            (float distanceFromStart, float targetSpeed) = trajectory.GetSpeedAtPosition(closestpoint);
-
-            targetSpeed = Mathf.Max(targetSpeed, 10f); //The minimum target speed is 5 because otherwise it doesn't start (TODO to be removed after the improved target speed profile ?)
-            targetSpeed = trackTrajectoryScore > 0.4 ? 10f : targetSpeed; //We limit the speed of the car if it goes to far away from the trajectory
-
             controller.GainDerivative = gainDerivative;
             controller.GainIntegral = gainIntegral;
             controller.GainProportional = gainProportional;
@@ -115,9 +127,13 @@ namespace UnityStandardAssets.Vehicles.Car
             controller.ProcessVariable = currentSpeed;
             currentThrottle = (float)controller.ControlVariable(System.TimeSpan.FromSeconds(Time.fixedDeltaTime));
 
+            if (currentSpeed < 5f )
+            {
+                currentThrottle = Mathf.Min(0.5f, currentThrottle);
+            }
+
             Debug.Log("Target speed (in game unit): " + targetSpeed);
             Debug.Log("Speed (in game unit): " + currentSpeed / 2.23693629f); //Divided to have game units
-            recordedSpeed.Add(new double[] { distanceFromStart, currentSpeed / 2.23693629f });
         }
 
         private void computeSteering()
@@ -136,6 +152,28 @@ namespace UnityStandardAssets.Vehicles.Car
             currentSteering = Mathf.Clamp(psi + crossTrack, -25, 25) / 25;
 
             trackTrajectoryScore = ((1 - Mathf.Exp(-carDistanceToTrajectory / distanceRelaxation)) + Mathf.Abs(psi / 180)) / 2;
+        }
+
+        private void driveBackward()
+        {
+            float currentSpeed = m_Car.CurrentSpeed; //Also in car unit
+            currentSpeed = m_Car.Backing ? -currentSpeed : currentSpeed;
+            if (currentSpeed > 0.2f)
+            {
+                m_Car.Move(0f, 0f, 0f, 1f);
+            }
+            else
+            {
+                computeThrottle(-5f);
+                computeSteering();
+                m_Car.Move(-currentSteering, 0f, currentThrottle, 0f);
+            }
+
+            if (Physics.Raycast(transform.position + transform.up, transform.TransformDirection(Vector3.forward), 15f))
+            {
+                driveForward = true;
+            }
+
         }
 
 

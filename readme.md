@@ -19,3 +19,11 @@ On terrain C (the simplest one) and A the estimation was half of the real time. 
 <a id="3">[3]</a> Hoffmann, Gabriel M., Claire J. Tomlin, Michael Montemerlo, and Sebastian Thrun. "Autonomous Automobile Trajectory Tracking for Off-Road Driving: Controller Design, Experimental Validation and Racing." American Control Conference. 2007, pp. 2296–2301. doi:10.1109/ACC.2007.4282788 (Stanley Controller)
 
 <a id="4">[4]</a> Xiao-Diao Chen, Yin Zhou, Zhenyu Shu, Hua Su, Jean-Claude Paul. Improved Algebraic Algorithm On Point Projection For Bézier Curves. (Not used yet)
+
+## Results
+
+* Terrain A: 28.6 sec
+* Terrain B: 61.62 sec
+* Terrain C: 11.3 sec
+* Terrain D: 31.6 sec
+* Terrain E: 27.3 sec

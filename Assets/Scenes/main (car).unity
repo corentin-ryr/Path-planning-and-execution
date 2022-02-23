@@ -682,12 +682,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe52adec360a837c0aeb25f822db92cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debug: 0
+  debug: 1
   showGraph: 0
   showWaypoints: 1
   optimize: 1
-  nbIter: 400
-  nbEpochs: 120
+  showPath: 0
+  nbIter: 500
+  nbEpochs: 50
 --- !u!4 &860141330
 Transform:
   m_ObjectHideFlags: 0
@@ -755,6 +756,7 @@ MonoBehaviour:
     showNormalsHelpInfo: 0
     tabIndex: 0
   initialized: 1
+  showPath: 1
 --- !u!1 &861243210
 GameObject:
   m_ObjectHideFlags: 0
@@ -946,7 +948,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ed951abcb196b40f38b3699dfa82c76c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrain_filename: text/terrainA
+  terrain_filename: text/terrainC
   myInfo:
     file_name: 
     x_low: 0
@@ -1121,6 +1123,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Car
       objectReference: {fileID: 0}
+    - target: {fileID: 100042, guid: 0e7ee4df08df88c4880f43398f9ad2c2, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 400050, guid: 0e7ee4df08df88c4880f43398f9ad2c2, type: 3}
       propertyPath: m_RootOrder
       value: 8
@@ -1236,7 +1242,7 @@ MonoBehaviour:
   gainDerivative: 1
   gainIntegral: 1
   gainProportional: 1
-  k: 1
+  k: 0.5
   ks: 3
   distanceRelaxation: 2
   debug: 1

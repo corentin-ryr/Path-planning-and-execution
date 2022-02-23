@@ -14,6 +14,8 @@ namespace PathCreation {
         [SerializeField, HideInInspector]
         bool initialized;
 
+        public bool showPath = true;
+
         GlobalDisplaySettings globalEditorDisplaySettings;
 
         // Vertex path created from the current bezier path
@@ -86,7 +88,7 @@ namespace PathCreation {
                         globalEditorDisplaySettings = GlobalDisplaySettings.Load ();
                     }
 
-                    if (globalEditorDisplaySettings.visibleWhenNotSelected) {
+                    if (globalEditorDisplaySettings.visibleWhenNotSelected && showPath) {
 
                         Gizmos.color = globalEditorDisplaySettings.bezierPath;
 
